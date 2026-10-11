@@ -101,8 +101,10 @@ android {
                 "proguard-rules.pro",
             )
             signingConfig = signingConfigs["release"]
-            buildConfigField("boolean", "ALLOW_CLEARTEXT", "true")
-            manifestPlaceholders["usesCleartextTraffic"] = "true"
+            // Personal-agent release builds must not send credentials over cleartext.
+            // Development builds may still use trusted LAN HTTP for testing.
+            buildConfigField("boolean", "ALLOW_CLEARTEXT", "false")
+            manifestPlaceholders["usesCleartextTraffic"] = "false"
         }
     }
 
