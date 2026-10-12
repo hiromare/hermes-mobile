@@ -13,15 +13,14 @@ import androidx.core.content.ContextCompat
 import com.m57.hermescontrol.MainActivity
 import com.m57.hermescontrol.R
 import com.m57.hermescontrol.data.local.AuthManager
+import com.m57.hermescontrol.data.model.KanbanBoardsResponse
 import com.m57.hermescontrol.data.remote.OkHttpProvider
 import com.m57.hermescontrol.data.ws.KanbanEventsClient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.decodeFromString
 import okhttp3.Request
 
 private val BOARD_SLUG_PATTERN = Regex("[a-zA-Z0-9][a-zA-Z0-9_-]{0,79}")
@@ -41,6 +40,12 @@ internal fun selectKanbanAlertBoards(ids: List<String>): List<String> =
         .filter { it != "null" && BOARD_SLUG_PATTERN.matches(it) }
         .distinct()
         .take(MAX_MONITORED_BOARDS)
+
+/** Use the same wire model as the Kanban screen (JSON uses "slug", not "id"). */
+internal fun parseKanbanAlertBoards(body: String): List<String> =
+    selectKanbanAlertBoards(
+        OkHttpProvider.json.decodeFromString<KanbanBoardsResponse>(body).boards.map { it.id },
+    )
 
 /**
  * Monitor all accessible active boards rather than server-current: the mobile
@@ -121,16 +126,7 @@ internal class KanbanBackgroundAlertMonitor(
                 .build()
         OkHttpProvider.probe.newCall(request).execute().use { response ->
             if (!response.isSuccessful) return emptyList()
-            val body = response.body.string()
-            val obj = OkHttpProvider.json.parseToJsonElement(body).jsonObject
-            val ids =
-                obj["boards"]
-                    ?.jsonArray
-                    ?.mapNotNull { board ->
-                        runCatching { board.jsonObject["id"]?.jsonPrimitive?.content }.getOrNull()
-                    }
-                    .orEmpty()
-            return selectKanbanAlertBoards(ids)
+            return parseKanbanAlertBoards(response.body.string())
         }
     }
 

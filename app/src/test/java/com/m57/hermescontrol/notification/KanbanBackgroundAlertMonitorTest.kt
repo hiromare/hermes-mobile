@@ -28,6 +28,20 @@ class KanbanBackgroundAlertMonitorTest {
     }
 
     @Test
+    fun `uses wire slug when current board is null`() {
+        val json =
+            """{"current":null,"boards":[{"slug":"dots-personal-agent","name":"Personal"},{"slug":"default","name":"Default"}]}"""
+        assertEquals(listOf("dots-personal-agent", "default"), parseKanbanAlertBoards(json))
+    }
+
+    @Test
+    fun `ignores stale server current because all active boards are monitored`() {
+        val json =
+            """{"current":"archived-board","boards":[{"slug":"board-a"},{"slug":"board-b"}]}"""
+        assertEquals(listOf("board-a", "board-b"), parseKanbanAlertBoards(json))
+    }
+
+    @Test
     fun `rejects invalid and null-like board identifiers and limits sockets`() {
         assertEquals(
             listOf("default", "board_2"),
