@@ -18,6 +18,25 @@ class KanbanBackgroundAlertMonitorTest {
     }
 
     @Test
+    fun `monitors multiple active boards regardless of server current`() {
+        assertEquals(
+            listOf("dots-personal-agent", "dots-ux-acceptance", "default"),
+            selectKanbanAlertBoards(
+                listOf("dots-personal-agent", "dots-ux-acceptance", "default", "dots-personal-agent"),
+            ),
+        )
+    }
+
+    @Test
+    fun `rejects invalid and null-like board identifiers and limits sockets`() {
+        assertEquals(
+            listOf("default", "board_2"),
+            selectKanbanAlertBoards(listOf("null", "", "default", "board_2", "a/b", "../oops")),
+        )
+        assertEquals(12, selectKanbanAlertBoards((1..30).map { "board-$it" }).size)
+    }
+
+    @Test
     fun `does not notify for ordinary heartbeat or replay events`() {
         listOf("created", "claimed", "spawned", "heartbeat", "commented", "unblocked", "promoted", "archived")
             .forEach { assertNull(kanbanEventAlertKind(it)) }

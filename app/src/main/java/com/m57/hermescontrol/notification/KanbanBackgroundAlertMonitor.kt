@@ -14,17 +14,20 @@ import com.m57.hermescontrol.MainActivity
 import com.m57.hermescontrol.R
 import com.m57.hermescontrol.data.local.AuthManager
 import com.m57.hermescontrol.data.remote.OkHttpProvider
-import com.m57.hermescontrol.data.ws.KanbanEvent
 import com.m57.hermescontrol.data.ws.KanbanEventsClient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import okhttp3.Request
 
-/** Notifications are only for terminal or human-action events, never heartbeat/replay noise. */
+private val BOARD_SLUG_PATTERN = Regex("[a-zA-Z0-9][a-zA-Z0-9_-]{0,79}")
+private const val MAX_MONITORED_BOARDS = 12
+
+/** Notifications are for terminal or human-action events, never heartbeat noise. */
 internal fun kanbanEventAlertKind(kind: String): String? =
     when (kind) {
         "completed" -> "completed"
@@ -32,59 +35,71 @@ internal fun kanbanEventAlertKind(kind: String): String? =
         else -> null
     }
 
+/** Validate, de-duplicate, and cap untrusted board IDs from the dashboard API. */
+internal fun selectKanbanAlertBoards(ids: List<String>): List<String> =
+    ids
+        .filter { it != "null" && BOARD_SLUG_PATTERN.matches(it) }
+        .distinct()
+        .take(MAX_MONITORED_BOARDS)
+
 /**
- * Subscribes to the server's current Kanban board while the existing foreground
- * service is alive. Reuses the dashboard's authenticated WebSocket and existing
- * chat notification channel: no second daemon, secret, or background poller.
+ * Monitor all accessible active boards rather than server-current: the mobile
+ * Kanban screen can select a different board locally without updating
+ * server-current. One bounded WS per board reuses Hermes' native WS auth.
  *
- * A per-server/board event cursor survives service recreation. The very first
- * connection ignores historical events by timestamp; subsequent reconnects
- * replay only unseen events. No task descriptions or event payloads are exposed
- * on the lock screen.
+ * The monitor lives ONLY in the app's existing opted-in foreground service:
+ * no second daemon, timer, credential, or polling system. Each server/board
+ * cursor is persistent; initial connections ignore historical events by age.
  */
 internal class KanbanBackgroundAlertMonitor(
     private val context: Context,
 ) {
-    private val eventsClient = KanbanEventsClient()
+    private val clients = mutableListOf<KanbanEventsClient>()
     private val prefs = context.getSharedPreferences("hermes_kanban_alert_cursors", Context.MODE_PRIVATE)
-    private var connected = false
     private val startupEpochSeconds = System.currentTimeMillis() / 1000
 
     fun start(scope: CoroutineScope) {
         scope.launch(Dispatchers.IO) {
             try {
-                val board = fetchCurrentBoard() ?: return@launch
+                val boards = fetchBoards()
+                if (!scope.isActive) return@launch
+                if (boards.size >= MAX_MONITORED_BOARDS) {
+                    Log.w(TAG, "Kanban notification board subscription limit reached")
+                }
                 val endpoint = AuthManager.endpointForBuild().baseUrl.toString()
-                val key = "events_" + (endpoint + "|" + board).hashCode().toString()
-                var cursor = prefs.getLong(key, 0L)
-                val firstConnection = !prefs.contains(key)
-                connected = true
-                eventsClient.connect(
-                    scope = scope,
-                    board = board,
-                    since = cursor,
-                    onEvents = { envelope ->
-                        envelope.events.sortedBy { it.id }.forEach { event ->
-                            if (event.id <= cursor) return@forEach
-                            cursor = event.id
-                            // Persist the cursor even for heartbeat and suppressed historical events.
-                            prefs.edit().putLong(key, cursor).apply()
-                            val kind = kanbanEventAlertKind(event.kind) ?: return@forEach
-                            val taskId =
-                                event.taskId?.takeIf { it.matches(Regex("t_[a-zA-Z0-9_-]{4,64}")) }
-                                    ?: return@forEach
-                            if (firstConnection && (event.createdAt ?: 0) < startupEpochSeconds - 2) {
-                                return@forEach
+                boards.forEach { board ->
+                    if (!scope.isActive) return@launch
+                    val key = "events_" + (endpoint + "|" + board).hashCode().toString()
+                    var cursor = prefs.getLong(key, 0L)
+                    val firstConnection = !prefs.contains(key)
+                    val client = KanbanEventsClient()
+                    clients.add(client)
+                    client.connect(
+                        scope = scope,
+                        board = board,
+                        since = cursor,
+                        onEvents = { envelope ->
+                            envelope.events.sortedBy { it.id }.forEach { event ->
+                                if (event.id <= cursor) return@forEach
+                                cursor = event.id
+                                prefs.edit().putLong(key, cursor).apply()
+                                val kind = kanbanEventAlertKind(event.kind) ?: return@forEach
+                                val taskId =
+                                    event.taskId?.takeIf { it.matches(Regex("t_[a-zA-Z0-9_-]{4,64}")) }
+                                        ?: return@forEach
+                                if (firstConnection && (event.createdAt ?: 0) < startupEpochSeconds - 2) {
+                                    return@forEach
+                                }
+                                notifyTask(board, taskId, kind)
                             }
-                            notifyTask(board, taskId, kind)
-                        }
-                    },
-                    onStatus = { status ->
-                        if (com.m57.hermescontrol.BuildConfig.DEBUG) {
-                            Log.d(TAG, "Kanban alert stream status: $status")
-                        }
-                    },
-                )
+                        },
+                        onStatus = { status ->
+                            if (com.m57.hermescontrol.BuildConfig.DEBUG) {
+                                Log.d(TAG, "Kanban $board alert stream status: $status")
+                            }
+                        },
+                    )
+                }
             } catch (e: Exception) {
                 Log.w(TAG, "Kanban background alerts unavailable: " + e.javaClass.simpleName)
             }
@@ -92,13 +107,11 @@ internal class KanbanBackgroundAlertMonitor(
     }
 
     fun stop() {
-        if (connected) {
-            connected = false
-            eventsClient.disconnect()
-        }
+        clients.forEach { it.disconnect() }
+        clients.clear()
     }
 
-    private fun fetchCurrentBoard(): String? {
+    private fun fetchBoards(): List<String> {
         val url = AuthManager.endpointForBuild().resolve("api/plugins/kanban/boards")
         val request =
             Request
@@ -107,18 +120,17 @@ internal class KanbanBackgroundAlertMonitor(
                 .get()
                 .build()
         OkHttpProvider.probe.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) return null
+            if (!response.isSuccessful) return emptyList()
             val body = response.body.string()
             val obj = OkHttpProvider.json.parseToJsonElement(body).jsonObject
-            val current = obj["current"]?.jsonPrimitive?.content
-            if (!current.isNullOrBlank()) return current
-            return obj["boards"]
-                ?.jsonArray
-                ?.firstOrNull()
-                ?.jsonObject
-                ?.get("id")
-                ?.jsonPrimitive
-                ?.content
+            val ids =
+                obj["boards"]
+                    ?.jsonArray
+                    ?.mapNotNull { board ->
+                        runCatching { board.jsonObject["id"]?.jsonPrimitive?.content }.getOrNull()
+                    }
+                    .orEmpty()
+            return selectKanbanAlertBoards(ids)
         }
     }
 
