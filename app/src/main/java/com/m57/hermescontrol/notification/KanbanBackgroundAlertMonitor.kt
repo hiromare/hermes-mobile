@@ -32,8 +32,9 @@ private const val KANBAN_NOTIFICATION_BASE = 20_000
 internal fun kanbanNotificationId(
     board: String,
     taskId: String,
-): Int =
-    KANBAN_NOTIFICATION_BASE + ((board + "|" + taskId).hashCode() and 0x00ffffff)
+): Int {
+    return KANBAN_NOTIFICATION_BASE + ((board + "|" + taskId).hashCode() and 0x00ffffff)
+}
 
 /** Notifications are for terminal or human-action events, never heartbeat noise. */
 internal fun kanbanEventAlertKind(kind: String): String? =
