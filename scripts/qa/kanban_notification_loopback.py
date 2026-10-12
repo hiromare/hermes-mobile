@@ -106,13 +106,16 @@ async def metrics(_: web.Request) -> web.Response:
     return web.json_response(metrics_state)
 
 
-app = web.Application()
-app.router.add_get("/api/plugins/kanban/events", ws)
-app.router.add_get("/api/ws", ws)
-app.router.add_post("/trigger", trigger)
-app.router.add_get("/metrics", metrics)
-app.router.add_route("*", "/{tail:.*}", api)
+def create_app() -> web.Application:
+    """Fresh isolated app per test event loop; production fixture still single-process."""
+    app = web.Application()
+    app.router.add_get("/api/plugins/kanban/events", ws)
+    app.router.add_get("/api/ws", ws)
+    app.router.add_post("/trigger", trigger)
+    app.router.add_get("/metrics", metrics)
+    app.router.add_route("*", "/{tail:.*}", api)
+    return app
 
 
 if __name__ == "__main__":
-    web.run_app(app, host="127.0.0.1", port=PORT)
+    web.run_app(create_app(), host="127.0.0.1", port=PORT)
