@@ -10,7 +10,6 @@ import android.os.Build
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
-import com.m57.hermescontrol.MainActivity
 import com.m57.hermescontrol.R
 import com.m57.hermescontrol.data.local.AuthManager
 import com.m57.hermescontrol.data.model.KanbanBoardsResponse
@@ -27,6 +26,13 @@ import kotlinx.serialization.decodeFromString
 
 private val BOARD_SLUG_PATTERN = Regex("[a-zA-Z0-9][a-zA-Z0-9_-]{0,79}")
 private const val MAX_MONITORED_BOARDS = 12
+private const val KANBAN_NOTIFICATION_BASE = 20_000
+
+/** Stable board-scoped ID: independent boards may contain the same task ID. */
+internal fun kanbanNotificationId(
+    board: String,
+    taskId: String,
+): Int = KANBAN_NOTIFICATION_BASE + ((board + "|" + taskId).hashCode() and 0x00ffffff)
 
 /** Notifications are for terminal or human-action events, never heartbeat noise. */
 internal fun kanbanEventAlertKind(kind: String): String? =
@@ -142,12 +148,11 @@ internal class KanbanBackgroundAlertMonitor(
             return
         }
         val intent =
-            Intent(context, MainActivity::class.java).apply {
+            Intent(context, KanbanNotificationTapActivity::class.java).apply {
                 setPackage(context.packageName)
-                action = MainActivity.ACTION_OPEN_KANBAN_FROM_NOTIFICATION
-                putExtra(MainActivity.EXTRA_KANBAN_BOARD, board)
-                putExtra(MainActivity.EXTRA_KANBAN_TASK, taskId)
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                action = KanbanNotificationTapActivity.ACTION_OPEN_KANBAN_NOTIFICATION
+                putExtra(KanbanNotificationTapActivity.EXTRA_KANBAN_BOARD, board)
+                putExtra(KanbanNotificationTapActivity.EXTRA_KANBAN_TASK, taskId)
             }
         val pendingIntent =
             PendingIntent.getActivity(
@@ -170,11 +175,10 @@ internal class KanbanBackgroundAlertMonitor(
                 .setContentIntent(pendingIntent)
                 .build()
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        manager.notify(KANBAN_NOTIFICATION_BASE + (taskId.hashCode() and 0x00ffffff), notification)
+        manager.notify(kanbanNotificationId(board, taskId), notification)
     }
 
     private companion object {
         const val TAG = "KanbanBackgroundAlerts"
-        const val KANBAN_NOTIFICATION_BASE = 20_000
     }
 }

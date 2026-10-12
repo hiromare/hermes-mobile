@@ -10,10 +10,21 @@ import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 
 class KanbanBackgroundAlertMonitorTest {
+    @Test
+    fun `notification IDs are scoped to board and task`() {
+        val task = "t_1234abcd"
+        val first = kanbanNotificationId("dots-personal-agent", task)
+        val second = kanbanNotificationId("other-board", task)
+        assertNotEquals(first, second)
+        assertEquals(first, kanbanNotificationId("dots-personal-agent", task))
+        assertNotEquals(first, kanbanNotificationId("dots-personal-agent", "t_ffffffff"))
+    }
+
     @Test
     fun `board discovery uses repository endpoint`() =
         runTest {
