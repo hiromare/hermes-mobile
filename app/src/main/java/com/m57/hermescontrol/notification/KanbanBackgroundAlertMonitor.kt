@@ -149,14 +149,14 @@ internal class KanbanBackgroundAlertMonitor(
             return
         }
         val intent =
-            Intent(context, KanbanNotificationTapReceiver::class.java).apply {
+            Intent(context, KanbanNotificationTapActivity::class.java).apply {
                 setPackage(context.packageName)
-                action = KanbanNotificationTapReceiver.ACTION_OPEN_KANBAN_NOTIFICATION
-                putExtra(KanbanNotificationTapReceiver.EXTRA_KANBAN_BOARD, board)
-                putExtra(KanbanNotificationTapReceiver.EXTRA_KANBAN_TASK, taskId)
+                action = KanbanNotificationTapActivity.ACTION_OPEN_KANBAN_NOTIFICATION
+                putExtra(KanbanNotificationTapActivity.EXTRA_KANBAN_BOARD, board)
+                putExtra(KanbanNotificationTapActivity.EXTRA_KANBAN_TASK, taskId)
             }
         val pendingIntent =
-            PendingIntent.getBroadcast(
+            PendingIntent.getActivity(
                 context,
                 (board + "|" + taskId).hashCode(),
                 intent,
