@@ -162,7 +162,8 @@ fun isReleaseCandidateVersion(tag: String): Boolean =
  */
 open class AppUpdateChecker(
     private val client: OkHttpClient = OkHttpProvider.base,
-    private val apiBaseUrl: String = "https://api.github.com/repos/Hy4ri/hermes-mobile",
+    // Fork APKs must never offer upstream-signed packages as in-app updates.
+    private val apiBaseUrl: String = "https://api.github.com/repos/hiromare/hermes-mobile",
 ) {
     /**
      * Fetch the newest installable release metadata.
