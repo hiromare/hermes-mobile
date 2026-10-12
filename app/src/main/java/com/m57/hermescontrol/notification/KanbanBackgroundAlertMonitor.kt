@@ -70,8 +70,9 @@ internal class KanbanBackgroundAlertMonitor(
                             // Persist the cursor even for heartbeat and suppressed historical events.
                             prefs.edit().putLong(key, cursor).apply()
                             val kind = kanbanEventAlertKind(event.kind) ?: return@forEach
-                            val taskId = event.taskId?.takeIf { it.matches(Regex("t_[a-zA-Z0-9_-]{4,64}")) }
-                                ?: return@forEach
+                            val taskId =
+                                event.taskId?.takeIf { it.matches(Regex("t_[a-zA-Z0-9_-]{4,64}")) }
+                                    ?: return@forEach
                             if (firstConnection && (event.createdAt ?: 0) < startupEpochSeconds - 2) {
                                 return@forEach
                             }
@@ -99,14 +100,25 @@ internal class KanbanBackgroundAlertMonitor(
 
     private fun fetchCurrentBoard(): String? {
         val url = AuthManager.endpointForBuild().resolve("api/plugins/kanban/boards")
-        val request = Request.Builder().url(url).get().build()
+        val request =
+            Request
+                .Builder()
+                .url(url)
+                .get()
+                .build()
         OkHttpProvider.probe.newCall(request).execute().use { response ->
             if (!response.isSuccessful) return null
             val body = response.body.string()
             val obj = OkHttpProvider.json.parseToJsonElement(body).jsonObject
             val current = obj["current"]?.jsonPrimitive?.content
             if (!current.isNullOrBlank()) return current
-            return obj["boards"]?.jsonArray?.firstOrNull()?.jsonObject?.get("id")?.jsonPrimitive?.content
+            return obj["boards"]
+                ?.jsonArray
+                ?.firstOrNull()
+                ?.jsonObject
+                ?.get("id")
+                ?.jsonPrimitive
+                ?.content
         }
     }
 
@@ -121,27 +133,31 @@ internal class KanbanBackgroundAlertMonitor(
         ) {
             return
         }
-        val intent = Intent(context, MainActivity::class.java).apply {
-            setPackage(context.packageName)
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-        }
-        val pendingIntent = PendingIntent.getActivity(
-            context,
-            taskId.hashCode(),
-            intent,
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
-        )
+        val intent =
+            Intent(context, MainActivity::class.java).apply {
+                setPackage(context.packageName)
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            }
+        val pendingIntent =
+            PendingIntent.getActivity(
+                context,
+                taskId.hashCode(),
+                intent,
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+            )
         val text = "$taskId · $kind · $board"
-        val notification = NotificationCompat.Builder(context, ChatNotificationService.CHAT_CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle("Hermes Kanban")
-            .setContentText(text)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(text))
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
-            .setAutoCancel(true)
-            .setContentIntent(pendingIntent)
-            .build()
+        val notification =
+            NotificationCompat
+                .Builder(context, ChatNotificationService.CHAT_CHANNEL_ID)
+                .setSmallIcon(R.drawable.ic_notification)
+                .setContentTitle("Hermes Kanban")
+                .setContentText(text)
+                .setStyle(NotificationCompat.BigTextStyle().bigText(text))
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
+                .setAutoCancel(true)
+                .setContentIntent(pendingIntent)
+                .build()
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         manager.notify(KANBAN_NOTIFICATION_BASE + (taskId.hashCode() and 0x00ffffff), notification)
     }
