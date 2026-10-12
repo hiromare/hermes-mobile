@@ -7,6 +7,18 @@ import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
 import com.m57.hermescontrol.data.model.ProjectInfo
 
+/** Whether this local profile has a potential dashboard auth credential.
+ *
+ * A gated dashboard uses a scoped session cookie for REST APIs; it may have no
+ * persisted WS ticket/token after process recreation. The server still
+ * validates credentials on every request.
+ */
+internal fun hasDashboardNavigationCredential(
+    token: String?,
+    gatedMode: Boolean,
+    sessionCookie: String?,
+): Boolean = !token.isNullOrBlank() || (gatedMode && !sessionCookie.isNullOrBlank())
+
 data class PendingChatNavigation(
     val sessionId: String,
     val scrollToBottom: Boolean,
