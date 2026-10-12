@@ -72,6 +72,10 @@
             android:exported="false" />
 
         <receiver
+            android:name=".notification.KanbanNotificationTapReceiver"
+            android:exported="false" />
+
+        <receiver
             android:name=".notification.StopKeepConnectedReceiver"
             android:exported="false" />
 
