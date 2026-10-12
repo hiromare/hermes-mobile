@@ -1,0 +1,36 @@
+name: Kanban Loopback QA
+
+on:
+  pull_request:
+    branches:
+      - dev
+    paths:
+      - scripts/qa/kanban_notification_loopback.py
+      - tests/qa/**
+      - .github/workflows/kanban-loopback-qa.yml
+  push:
+    branches:
+      - dev
+    paths:
+      - scripts/qa/kanban_notification_loopback.py
+      - tests/qa/**
+      - .github/workflows/kanban-loopback-qa.yml
+
+permissions:
+  contents: read
+
+jobs:
+  fixture-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install only mock-server test dependencies
+        run: python3 -m pip install 'aiohttp>=3.12,<4'
+      - name: Compile fixture and run contract tests
+        run: |
+          python3 -m py_compile scripts/qa/kanban_notification_loopback.py
+          python3 -m unittest discover -s tests/qa -p 'test_*.py' -v
