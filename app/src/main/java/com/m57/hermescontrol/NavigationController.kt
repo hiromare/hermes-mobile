@@ -13,7 +13,10 @@ data class PendingChatNavigation(
     val requestId: Long,
 )
 
-data class PendingKanbanNavigation(val boardSlug: String, val taskId: String)
+data class PendingKanbanNavigation(
+    val boardSlug: String,
+    val taskId: String,
+)
 
 data class PendingNewChatNavigation(
     val requestId: Long,
@@ -108,7 +111,10 @@ object NavigationController {
         queueChatNavigation(sessionId, scrollToBottom = false, returnToList = true)
     }
 
-    fun openKanbanTaskFromNotification(boardSlug: String, taskId: String) {
+    fun openKanbanTaskFromNotification(
+        boardSlug: String,
+        taskId: String,
+    ) {
         if (!Regex("[a-zA-Z0-9][a-zA-Z0-9_-]{0,79}").matches(boardSlug)) return
         if (!Regex("t_[a-zA-Z0-9_-]{4,64}").matches(taskId)) return
         pendingKanbanNavigation = PendingKanbanNavigation(boardSlug, taskId)

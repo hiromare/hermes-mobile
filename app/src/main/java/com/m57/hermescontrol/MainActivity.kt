@@ -171,6 +171,7 @@ class MainActivity : ComponentActivity() {
                 intent.removeExtra(NotificationReplyReceiver.EXTRA_SESSION_ID)
                 sessionId?.takeIf { it.isNotBlank() }?.let(NavigationController::openChatSessionFromNotification)
             }
+
             ACTION_OPEN_KANBAN_FROM_NOTIFICATION -> {
                 val board = intent.getStringExtra(EXTRA_KANBAN_BOARD)
                 val task = intent.getStringExtra(EXTRA_KANBAN_TASK)
