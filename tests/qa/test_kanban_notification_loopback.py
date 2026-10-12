@@ -11,7 +11,7 @@ from scripts.qa import kanban_notification_loopback as fixture
 
 class KanbanLoopbackFixtureTests(AioHTTPTestCase):
     async def get_application(self):
-        return fixture.app
+        return fixture.create_app()
 
     async def asyncSetUp(self):
         fixture.clients.clear()
