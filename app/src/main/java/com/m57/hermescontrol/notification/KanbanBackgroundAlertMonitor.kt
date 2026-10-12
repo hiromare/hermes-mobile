@@ -44,7 +44,11 @@ internal fun selectKanbanAlertBoards(ids: List<String>): List<String> =
 /** Use the same wire model as the Kanban screen (JSON uses "slug", not "id"). */
 internal fun parseKanbanAlertBoards(body: String): List<String> =
     selectKanbanAlertBoards(
-        OkHttpProvider.json.decodeFromString<KanbanBoardsResponse>(body).boards.map { it.id },
+        OkHttpProvider
+            .json
+            .decodeFromString<KanbanBoardsResponse>(body)
+            .boards
+            .map { it.id },
     )
 
 /**
