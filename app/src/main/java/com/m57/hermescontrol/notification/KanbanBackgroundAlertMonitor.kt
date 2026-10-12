@@ -29,7 +29,10 @@ private const val MAX_MONITORED_BOARDS = 12
 private const val KANBAN_NOTIFICATION_BASE = 20_000
 
 /** Stable board-scoped ID: independent boards may contain the same task ID. */
-internal fun kanbanNotificationId(board: String, taskId: String): Int =
+internal fun kanbanNotificationId(
+    board: String,
+    taskId: String,
+): Int =
     KANBAN_NOTIFICATION_BASE + ((board + "|" + taskId).hashCode() and 0x00ffffff)
 
 /** Notifications are for terminal or human-action events, never heartbeat noise. */
