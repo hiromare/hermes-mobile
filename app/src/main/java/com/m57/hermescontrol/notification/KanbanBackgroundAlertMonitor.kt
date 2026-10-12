@@ -14,14 +14,16 @@ import com.m57.hermescontrol.MainActivity
 import com.m57.hermescontrol.R
 import com.m57.hermescontrol.data.local.AuthManager
 import com.m57.hermescontrol.data.model.KanbanBoardsResponse
+import com.m57.hermescontrol.data.remote.NetworkResult
 import com.m57.hermescontrol.data.remote.OkHttpProvider
+import com.m57.hermescontrol.data.repository.KanbanRepository
+import com.m57.hermescontrol.data.repository.KanbanRepositoryImpl
 import com.m57.hermescontrol.data.ws.KanbanEventsClient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.serialization.decodeFromString
-import okhttp3.Request
 
 private val BOARD_SLUG_PATTERN = Regex("[a-zA-Z0-9][a-zA-Z0-9_-]{0,79}")
 private const val MAX_MONITORED_BOARDS = 12
@@ -51,6 +53,13 @@ internal fun parseKanbanAlertBoards(body: String): List<String> =
             .map { it.id },
     )
 
+/** Board discovery uses the Kanban screen's authenticated REST client, including token/cookie modes. */
+internal suspend fun loadKanbanAlertBoards(repository: KanbanRepository): List<String> =
+    when (val result = repository.getBoards(includeArchived = false)) {
+        is NetworkResult.Success -> selectKanbanAlertBoards(result.data.boards.map { it.id })
+        is NetworkResult.Failure -> emptyList()
+    }
+
 /**
  * Monitor all accessible active boards rather than server-current: the mobile
  * Kanban screen can select a different board locally without updating
@@ -62,6 +71,7 @@ internal fun parseKanbanAlertBoards(body: String): List<String> =
  */
 internal class KanbanBackgroundAlertMonitor(
     private val context: Context,
+    private val repository: KanbanRepository = KanbanRepositoryImpl(),
 ) {
     private val clients = mutableListOf<KanbanEventsClient>()
     private val prefs = context.getSharedPreferences("hermes_kanban_alert_cursors", Context.MODE_PRIVATE)
@@ -70,7 +80,7 @@ internal class KanbanBackgroundAlertMonitor(
     fun start(scope: CoroutineScope) {
         scope.launch(Dispatchers.IO) {
             try {
-                val boards = fetchBoards()
+                val boards = loadKanbanAlertBoards(repository)
                 if (!scope.isActive) return@launch
                 if (boards.size >= MAX_MONITORED_BOARDS) {
                     Log.w(TAG, "Kanban notification board subscription limit reached")
@@ -120,20 +130,6 @@ internal class KanbanBackgroundAlertMonitor(
         clients.clear()
     }
 
-    private fun fetchBoards(): List<String> {
-        val url = AuthManager.endpointForBuild().resolve("api/plugins/kanban/boards")
-        val request =
-            Request
-                .Builder()
-                .url(url)
-                .get()
-                .build()
-        OkHttpProvider.probe.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) return emptyList()
-            return parseKanbanAlertBoards(response.body.string())
-        }
-    }
-
     private fun notifyTask(
         board: String,
         taskId: String,
@@ -148,12 +144,15 @@ internal class KanbanBackgroundAlertMonitor(
         val intent =
             Intent(context, MainActivity::class.java).apply {
                 setPackage(context.packageName)
+                action = MainActivity.ACTION_OPEN_KANBAN_FROM_NOTIFICATION
+                putExtra(MainActivity.EXTRA_KANBAN_BOARD, board)
+                putExtra(MainActivity.EXTRA_KANBAN_TASK, taskId)
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             }
         val pendingIntent =
             PendingIntent.getActivity(
                 context,
-                taskId.hashCode(),
+                (board + "|" + taskId).hashCode(),
                 intent,
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
             )

@@ -7,10 +7,27 @@ import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
 import com.m57.hermescontrol.data.model.ProjectInfo
 
+/** Whether this local profile has a potential dashboard auth credential.
+ *
+ * A gated dashboard uses a scoped session cookie for REST APIs; it may have no
+ * persisted WS ticket/token after process recreation. The server still
+ * validates credentials on every request.
+ */
+internal fun hasDashboardNavigationCredential(
+    token: String?,
+    gatedMode: Boolean,
+    sessionCookie: String?,
+): Boolean = !token.isNullOrBlank() || (gatedMode && !sessionCookie.isNullOrBlank())
+
 data class PendingChatNavigation(
     val sessionId: String,
     val scrollToBottom: Boolean,
     val requestId: Long,
+)
+
+data class PendingKanbanNavigation(
+    val boardSlug: String,
+    val taskId: String,
 )
 
 data class PendingNewChatNavigation(
@@ -35,6 +52,8 @@ object NavigationController {
     var pendingChatNavigation: PendingChatNavigation? by mutableStateOf(null)
         private set
     var pendingNewChatNavigation: PendingNewChatNavigation? by mutableStateOf(null)
+        private set
+    var pendingKanbanNavigation: PendingKanbanNavigation? by mutableStateOf(null)
         private set
 
     /**
@@ -102,6 +121,19 @@ object NavigationController {
         // return so back from the chat lands back on that list instead of
         // exiting the app (Telegram chat-list parity).
         queueChatNavigation(sessionId, scrollToBottom = false, returnToList = true)
+    }
+
+    fun openKanbanTaskFromNotification(
+        boardSlug: String,
+        taskId: String,
+    ) {
+        if (!Regex("[a-zA-Z0-9][a-zA-Z0-9_-]{0,79}").matches(boardSlug)) return
+        if (!Regex("t_[a-zA-Z0-9_-]{4,64}").matches(taskId)) return
+        pendingKanbanNavigation = PendingKanbanNavigation(boardSlug, taskId)
+    }
+
+    fun consumePendingKanbanNavigation() {
+        pendingKanbanNavigation = null
     }
 
     fun openChatSessionFromNotification(sessionId: String) {
