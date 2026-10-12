@@ -71,9 +71,10 @@
             android:name=".notification.NotificationReplyReceiver"
             android:exported="false" />
 
-        <receiver
-            android:name=".notification.KanbanNotificationTapReceiver"
-            android:exported="false" />
+        <activity
+            android:name=".notification.KanbanNotificationTapActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
 
         <receiver
             android:name=".notification.StopKeepConnectedReceiver"
