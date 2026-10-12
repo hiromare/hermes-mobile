@@ -1,10 +1,41 @@
 package com.m57.hermescontrol.notification
 
+import com.m57.hermescontrol.data.model.KanbanBoard
+import com.m57.hermescontrol.data.model.KanbanBoardsResponse
+import com.m57.hermescontrol.data.remote.NetworkError
+import com.m57.hermescontrol.data.remote.NetworkResult
+import com.m57.hermescontrol.data.repository.KanbanRepository
+import io.mockk.coEvery
+import io.mockk.coVerify
+import io.mockk.mockk
+import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 
 class KanbanBackgroundAlertMonitorTest {
+    @Test
+    fun `board discovery uses repository endpoint`() = runTest {
+        val repository = mockk<KanbanRepository>()
+        coEvery { repository.getBoards(includeArchived = false) } returns
+            NetworkResult.Success(
+                KanbanBoardsResponse(
+                    boards = listOf(KanbanBoard(id = "default"), KanbanBoard(id = "other")),
+                ),
+            )
+        assertEquals(listOf("default", "other"), loadKanbanAlertBoards(repository))
+        coVerify(exactly = 1) { repository.getBoards(includeArchived = false) }
+    }
+
+    @Test
+    fun `board discovery failure does not bypass repository`() = runTest {
+        val repository = mockk<KanbanRepository>()
+        coEvery { repository.getBoards(includeArchived = false) } returns
+            NetworkResult.Failure(NetworkError.Http(503, "Service temporarily unavailable"))
+        assertEquals(emptyList<String>(), loadKanbanAlertBoards(repository))
+        coVerify(exactly = 1) { repository.getBoards(includeArchived = false) }
+    }
+
     @Test
     fun `notifies for completion`() {
         assertEquals("completed", kanbanEventAlertKind("completed"))

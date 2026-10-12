@@ -13,6 +13,8 @@ data class PendingChatNavigation(
     val requestId: Long,
 )
 
+data class PendingKanbanNavigation(val boardSlug: String, val taskId: String)
+
 data class PendingNewChatNavigation(
     val requestId: Long,
     // Project to start the chat in; null keeps the default workspace.
@@ -35,6 +37,8 @@ object NavigationController {
     var pendingChatNavigation: PendingChatNavigation? by mutableStateOf(null)
         private set
     var pendingNewChatNavigation: PendingNewChatNavigation? by mutableStateOf(null)
+        private set
+    var pendingKanbanNavigation: PendingKanbanNavigation? by mutableStateOf(null)
         private set
 
     /**
@@ -102,6 +106,16 @@ object NavigationController {
         // return so back from the chat lands back on that list instead of
         // exiting the app (Telegram chat-list parity).
         queueChatNavigation(sessionId, scrollToBottom = false, returnToList = true)
+    }
+
+    fun openKanbanTaskFromNotification(boardSlug: String, taskId: String) {
+        if (!Regex("[a-zA-Z0-9][a-zA-Z0-9_-]{0,79}").matches(boardSlug)) return
+        if (!Regex("t_[a-zA-Z0-9_-]{4,64}").matches(taskId)) return
+        pendingKanbanNavigation = PendingKanbanNavigation(boardSlug, taskId)
+    }
+
+    fun consumePendingKanbanNavigation() {
+        pendingKanbanNavigation = null
     }
 
     fun openChatSessionFromNotification(sessionId: String) {

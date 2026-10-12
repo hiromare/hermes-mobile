@@ -31,6 +31,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
@@ -202,6 +203,15 @@ fun MainNavigation(sessionId: String? = null) {
 
     val backStack = remember(startScreen) { NavBackStack(startScreen) }
     NavigationController.backStack = backStack
+
+    val pendingKanban = NavigationController.pendingKanbanNavigation
+    LaunchedEffect(pendingKanban, hasToken) {
+        if (hasToken && pendingKanban != null) {
+            NavigationController.navigateTo(KanbanScreen)
+            NavigationController.navigateTo(KanbanTaskDetailKey(pendingKanban.boardSlug, pendingKanban.taskId))
+            NavigationController.consumePendingKanbanNavigation()
+        }
+    }
 
     val currentScreen = backStack.lastOrNull() ?: startScreen
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
