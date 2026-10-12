@@ -50,6 +50,9 @@ async def api(request: web.Request) -> web.Response:
             {"columns": [{"name": "done", "tasks": []}], "latestEventId": event_seq, "now": int(time.time())}
         )
     if path.startswith("/api/plugins/kanban/tasks/"):
+        requested_task_id = path.removeprefix("/api/plugins/kanban/tasks/").split("/", 1)[0]
+        if requested_task_id != TASK_ID:
+            return web.json_response({"error": "task_not_found"}, status=404)
         return web.json_response(
             {"task": {"id": TASK_ID, "title": SUBJECT, "status": "done",
                       "body": "No production impact", "created_by": "qa-local"},
@@ -58,7 +61,9 @@ async def api(request: web.Request) -> web.Response:
     return web.json_response({"ok": True, "sessions": [], "projects": [], "boards": []})
 
 
-async def ws(request: web.Request) -> web.WebSocketResponse:
+async def ws(request: web.Request) -> web.StreamResponse:
+    if request.path == "/api/plugins/kanban/events" and request.query.get("board") != BOARD:
+        return web.json_response({"error": "board_not_found"}, status=400)
     socket = web.WebSocketResponse(heartbeat=30)
     await socket.prepare(request)
     clients.add(socket)
@@ -101,13 +106,16 @@ async def metrics(_: web.Request) -> web.Response:
     return web.json_response(metrics_state)
 
 
-app = web.Application()
-app.router.add_get("/api/plugins/kanban/events", ws)
-app.router.add_get("/api/ws", ws)
-app.router.add_post("/trigger", trigger)
-app.router.add_get("/metrics", metrics)
-app.router.add_route("*", "/{tail:.*}", api)
+def create_app() -> web.Application:
+    """Fresh isolated app per test event loop; production fixture still single-process."""
+    app = web.Application()
+    app.router.add_get("/api/plugins/kanban/events", ws)
+    app.router.add_get("/api/ws", ws)
+    app.router.add_post("/trigger", trigger)
+    app.router.add_get("/metrics", metrics)
+    app.router.add_route("*", "/{tail:.*}", api)
+    return app
 
 
 if __name__ == "__main__":
-    web.run_app(app, host="127.0.0.1", port=PORT)
+    web.run_app(create_app(), host="127.0.0.1", port=PORT)
