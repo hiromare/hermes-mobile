@@ -198,15 +198,21 @@ private fun appEntryProvider(
 @Composable
 fun MainNavigation(sessionId: String? = null) {
     val token by AuthManager.tokenFlow.collectAsState()
-    val hasToken = !token.isNullOrBlank()
-    val startScreen: NavKey = if (hasToken) ChatScreen else LandingScreen
+    // Gated dashboards may retain a valid REST cookie after the WS ticket is gone.
+    val hasDashboardCredential =
+        hasDashboardNavigationCredential(
+            token = token,
+            gatedMode = AuthManager.isGatedMode(),
+            sessionCookie = AuthManager.getSessionCookie(),
+        )
+    val startScreen: NavKey = if (hasDashboardCredential) ChatScreen else LandingScreen
 
     val backStack = remember(startScreen) { NavBackStack(startScreen) }
     NavigationController.backStack = backStack
 
     val pendingKanban = NavigationController.pendingKanbanNavigation
-    LaunchedEffect(pendingKanban, hasToken) {
-        if (hasToken && pendingKanban != null) {
+    LaunchedEffect(pendingKanban, hasDashboardCredential) {
+        if (hasDashboardCredential && pendingKanban != null) {
             NavigationController.navigateTo(KanbanScreen)
             NavigationController.navigateTo(KanbanTaskDetailKey(pendingKanban.boardSlug, pendingKanban.taskId))
             NavigationController.consumePendingKanbanNavigation()
@@ -325,7 +331,7 @@ fun MainNavigation(sessionId: String? = null) {
                             fontWeight = FontWeight.SemiBold,
                         )
                         ScreenRegistry.ALL_SCREENS
-                            .filter { it.drawerSection == section && hasToken }
+                            .filter { it.drawerSection == section && hasDashboardCredential }
                             .forEach { entry ->
                                 NavigationDrawerItem(
                                     icon = { Icon(entry.icon, contentDescription = null) },
