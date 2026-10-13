@@ -266,14 +266,14 @@ open class AppUpdateChecker(
                     // GitHub release assets redirect between HTTPS hosts.
                     // Validate every network exchange (including redirects) so that
                     // an insecure downgrade is rejected before an HTTP request is sent.
-                    client.newBuilder()
+                    client
+                        .newBuilder()
                         .addNetworkInterceptor { chain ->
                             if (chain.request().url.scheme != "https") {
                                 throw IOException("Refusing insecure APK download redirect")
                             }
                             chain.proceed(chain.request())
-                        }
-                        .build()
+                        }.build()
                         .newCall(request)
                 } catch (_: Exception) {
                     failDownload(continuation, dest)
