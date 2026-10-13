@@ -54,6 +54,21 @@ class KanbanLoopbackFixtureTests(AioHTTPTestCase):
         self.assertEqual(received["cursor"], received["events"][0]["id"])
         await socket.close()
 
+    async def test_reconnecting_client_receives_event_newer_than_saved_cursor(self):
+        socket = await self.client.ws_connect(
+            f"/api/plugins/kanban/events?board={fixture.BOARD}&since=1750"
+        )
+        response = await self.client.post("/trigger")
+        sent = await response.json()
+        self.assertEqual(1751, sent["event"]["cursor"])
+        self.assertEqual(1751, (await socket.receive_json(timeout=3))["events"][0]["id"])
+        await socket.close()
+
+    async def test_invalid_event_cursor_is_rejected(self):
+        with self.assertRaises(client_exceptions.WSServerHandshakeError) as caught:
+            await self.client.ws_connect(f"/api/plugins/kanban/events?board={fixture.BOARD}&since=oops")
+        self.assertEqual(400, caught.exception.status)
+
     async def test_no_connected_kanban_client_no_notification_event(self):
         reply = await self.client.post("/trigger")
         self.assertEqual(200, reply.status)
