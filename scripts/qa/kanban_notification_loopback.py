@@ -14,10 +14,15 @@ PORT = 18588
 BOARD = "dots-personal-agent"
 TASK_ID = "t_1234abcd"
 SUBJECT = "Synthetic E2E alert"
+SECOND_BOARD = "dots-ux-acceptance"
+SECOND_TASK_ID = "t_8765dcba"
+SECOND_SUBJECT = "Synthetic second-board E2E alert"
+BOARD_TASKS = {BOARD: (TASK_ID, SUBJECT), SECOND_BOARD: (SECOND_TASK_ID, SECOND_SUBJECT)}
 TOKEN = "qa-local-session-not-a-real-credential"
 clients: set[web.WebSocketResponse] = set()
-kanban_clients: set[web.WebSocketResponse] = set()
+kanban_clients: dict[web.WebSocketResponse, str] = {}
 event_seq = 1000
+second_event_seq = 1000
 metrics_state = {"http_paths": [], "ws_clients": 0, "kanban_ws_clients": 0, "sent_events": []}
 
 
@@ -43,18 +48,27 @@ async def api(request: web.Request) -> web.Response:
         return web.json_response({"sessions": [], "total": 0, "limit": 20, "offset": 0})
     if path == "/api/plugins/kanban/boards":
         return web.json_response(
-            {"boards": [{"slug": BOARD, "name": "Dots QA", "isCurrent": True}], "current": BOARD}
+            {"boards": [
+                {"slug": BOARD, "name": "Dots QA", "isCurrent": True},
+                {"slug": SECOND_BOARD, "name": "Second-board QA", "isCurrent": False},
+            ], "current": BOARD}
         )
     if path == "/api/plugins/kanban/board":
+        board = request.query.get("board", BOARD)
+        if board not in BOARD_TASKS:
+            return web.json_response({"error": "board_not_found"}, status=404)
+        latest = event_seq if board == BOARD else second_event_seq
         return web.json_response(
-            {"columns": [{"name": "done", "tasks": []}], "latestEventId": event_seq, "now": int(time.time())}
+            {"columns": [{"name": "done", "tasks": []}], "latestEventId": latest, "now": int(time.time())}
         )
     if path.startswith("/api/plugins/kanban/tasks/"):
         requested_task_id = path.removeprefix("/api/plugins/kanban/tasks/").split("/", 1)[0]
-        if requested_task_id != TASK_ID:
+        board = request.query.get("board", BOARD)
+        if board not in BOARD_TASKS or requested_task_id != BOARD_TASKS[board][0]:
             return web.json_response({"error": "task_not_found"}, status=404)
+        task_id, title = BOARD_TASKS[board]
         return web.json_response(
-            {"task": {"id": TASK_ID, "title": SUBJECT, "status": "done",
+            {"task": {"id": task_id, "title": title, "status": "done",
                       "body": "No production impact", "created_by": "qa-local"},
              "comments": [], "events": []}
         )
@@ -62,9 +76,10 @@ async def api(request: web.Request) -> web.Response:
 
 
 async def ws(request: web.Request) -> web.StreamResponse:
-    global event_seq
+    global event_seq, second_event_seq
+    board = request.query.get("board")
     if request.path == "/api/plugins/kanban/events":
-        if request.query.get("board") != BOARD:
+        if board not in BOARD_TASKS:
             return web.json_response({"error": "board_not_found"}, status=400)
         try:
             since = int(request.query.get("since", "0"))
@@ -74,12 +89,15 @@ async def ws(request: web.Request) -> web.StreamResponse:
             return web.json_response({"error": "invalid_cursor"}, status=400)
         # The app persists an event cursor between QA runs; a fresh test fixture
         # must emit NEW events rather than replay IDs the app already consumed.
-        event_seq = max(event_seq, since)
+        if board == BOARD:
+            event_seq = max(event_seq, since)
+        else:
+            second_event_seq = max(second_event_seq, since)
     socket = web.WebSocketResponse(heartbeat=30)
     await socket.prepare(request)
     clients.add(socket)
     if request.path == "/api/plugins/kanban/events":
-        kanban_clients.add(socket)
+        kanban_clients[socket] = board
     metrics_state["ws_clients"] = len(clients)
     metrics_state["kanban_ws_clients"] = len(kanban_clients)
     try:
@@ -87,29 +105,39 @@ async def ws(request: web.Request) -> web.StreamResponse:
             pass
     finally:
         clients.discard(socket)
-        kanban_clients.discard(socket)
+        kanban_clients.pop(socket, None)
         metrics_state["ws_clients"] = len(clients)
         metrics_state["kanban_ws_clients"] = len(kanban_clients)
     return socket
 
 
-async def trigger(_: web.Request) -> web.Response:
-    global event_seq
-    event_seq += 1
+async def trigger(request: web.Request) -> web.Response:
+    """Emit only to sockets subscribed to the requested board (default: original QA board)."""
+    global event_seq, second_event_seq
+    board = request.query.get("board", BOARD)
+    if board not in BOARD_TASKS:
+        return web.json_response({"error": "board_not_found"}, status=400)
+    if board == BOARD:
+        event_seq += 1
+        seq = event_seq
+    else:
+        second_event_seq += 1
+        seq = second_event_seq
     now = int(time.time())
+    task_id, _ = BOARD_TASKS[board]
     payload = {
-        "events": [{"id": event_seq, "task_id": TASK_ID, "kind": "completed", "created_at": now}],
-        "cursor": event_seq,
+        "events": [{"id": seq, "task_id": task_id, "kind": "completed", "created_at": now}],
+        "cursor": seq,
     }
     sent = 0
-    for socket in list(kanban_clients):
-        if not socket.closed:
+    for socket, subscribed_board in list(kanban_clients.items()):
+        if subscribed_board == board and not socket.closed:
             try:
                 await socket.send_json(payload)
                 sent += 1
             except (ConnectionError, RuntimeError):
                 pass
-    metrics_state["sent_events"].append({"id": event_seq, "sent_to_ws": sent, "at": now})
+    metrics_state["sent_events"].append({"board": board, "id": seq, "sent_to_ws": sent, "at": now})
     return web.json_response({"sent_to_ws": sent, "event": payload})
 
 
