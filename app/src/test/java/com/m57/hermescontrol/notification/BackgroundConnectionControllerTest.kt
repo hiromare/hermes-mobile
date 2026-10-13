@@ -261,6 +261,7 @@ class BackgroundConnectionControllerTest {
             // Must NOT call any serverStore getters before Ready
             verify(exactly = 0) { AuthManager.isGatedMode() }
             verify(exactly = 0) { AuthManager.getToken() }
+            verify(exactly = 0) { AuthManager.hasLocalSession() }
             verify(exactly = 0) { AuthManager.isKeepConnectedInBackground() }
             verify(exactly = 0) { AuthManager.isAutoReconnect() }
 
@@ -286,6 +287,8 @@ class BackgroundConnectionControllerTest {
             every { AuthManager.initializationState } returns MutableStateFlow(AuthManager.InitializationState.Ready)
             every { AuthManager.isGatedMode() } returns true
             every { AuthManager.getToken() } returns null
+            // A valid encrypted session cookie (not an expired WS ticket) is required.
+            every { AuthManager.hasLocalSession() } returns true
             every { AuthManager.isKeepConnectedInBackground() } returns true
             every { AuthManager.isNotifySessionCompletions() } returns false
             every { AuthManager.isAutoReconnect() } returns true
@@ -320,6 +323,7 @@ class BackgroundConnectionControllerTest {
             every { AuthManager.initializationState } returns MutableStateFlow(AuthManager.InitializationState.Ready)
             every { AuthManager.isGatedMode() } returns false
             every { AuthManager.getToken() } returns null
+            every { AuthManager.hasLocalSession() } returns false
             every { AuthManager.isKeepConnectedInBackground() } returns true
             every { AuthManager.isNotifySessionCompletions() } returns false
             every { AuthManager.isAutoReconnect() } returns true
@@ -353,6 +357,7 @@ class BackgroundConnectionControllerTest {
             every { AuthManager.initializationState } returns MutableStateFlow(AuthManager.InitializationState.Ready)
             every { AuthManager.isGatedMode() } returns false
             every { AuthManager.getToken() } returns "some-token"
+            every { AuthManager.hasLocalSession() } returns true
             every { AuthManager.isKeepConnectedInBackground() } returns true
             every { AuthManager.isNotifySessionCompletions() } returns false
             every { AuthManager.isAutoReconnect() } returns true
@@ -387,6 +392,7 @@ class BackgroundConnectionControllerTest {
             every { AuthManager.initializationState } returns MutableStateFlow(AuthManager.InitializationState.Ready)
             every { AuthManager.isGatedMode() } returns false
             every { AuthManager.getToken() } returns "some-token"
+            every { AuthManager.hasLocalSession() } returns true
             every { AuthManager.isKeepConnectedInBackground() } returns true
             every { AuthManager.isNotifySessionCompletions() } returns false
             every { AuthManager.isAutoReconnect() } returns false

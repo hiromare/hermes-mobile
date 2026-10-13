@@ -1,9 +1,10 @@
 package com.m57.hermescontrol.data.remote
 
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.async
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import okhttp3.Cookie
@@ -41,6 +42,8 @@ class PersistentCookieJar(
     private val cache = ConcurrentHashMap<String, MutableMap<String, MutableList<Cookie>>>()
     private val loadedScopes = ConcurrentHashMap.newKeySet<String>()
     private val loadLatches = ConcurrentHashMap<String, CountDownLatch>()
+    private val persistenceLock = Any()
+    private var pendingPersistence: Deferred<Unit>? = null
 
     @Volatile private var currentServerId = AtomicReference(initialServerId)
 
@@ -49,6 +52,7 @@ class PersistentCookieJar(
     /** Atomically switch the active server scope and ensure its cookies are loaded. */
     suspend fun useStore(serverId: String) {
         scopeMutex.withLock {
+            awaitPendingPersistence()
             currentServerId.set(serverId)
             ensureLoaded(serverId)
         }
@@ -68,7 +72,7 @@ class PersistentCookieJar(
             loadLatches[serverId]?.await(5, TimeUnit.SECONDS)
         }
         val hosts = cache[serverId] ?: return null
-        for (bucket in hosts.values) {
+        for (bucket in listOfNotNull(hosts[WILDCARD_HOST]) + hosts.filterKeys { it != WILDCARD_HOST }.values) {
             synchronized(bucket) {
                 val match = bucket.firstOrNull { it.name == name }
                 if (match != null) return match
@@ -157,7 +161,7 @@ class PersistentCookieJar(
         // several IPs). They are exempted from the host-only domain match —
         // OkHttp would reject them for a different host — but never sent to
         // other servers because the scope itself is per-server.
-        val buckets = listOfNotNull(hosts[hostKey], hosts[WILDCARD_HOST])
+        val buckets = listOfNotNull(hosts[WILDCARD_HOST], hosts[hostKey])
         val seen = mutableSetOf<Pair<String, String>>()
         synchronized(buckets) {
             return buckets.flatMap { bucket ->
@@ -183,7 +187,19 @@ class PersistentCookieJar(
                 // Blank domain => host-only (e.g. legacy migrated session cookie).
                 // Bucket it under a wildcard "*" so it is returned for every host.
                 val host = cookie.domain.removePrefix(".").ifBlank { WILDCARD_HOST }
-                byHost.getOrPut(host) { mutableListOf() }.add(cookie)
+                val hostBucket = byHost.getOrPut(host) { mutableListOf() }
+                if (hostBucket.none { it.name == cookie.name && it.path == cookie.path }) {
+                    hostBucket.add(cookie)
+                }
+                // Bucket membership is not part of CookieStore's serialized format.
+                // Rebuild the session mirror after process death so a connection
+                // can still use its dashboard session on another known address.
+                if (host != WILDCARD_HOST && isSessionCookie(cookie)) {
+                    val wildcard = byHost.getOrPut(WILDCARD_HOST) { mutableListOf() }
+                    if (wildcard.none { it.name == cookie.name && it.path == cookie.path }) {
+                        wildcard.add(cookie)
+                    }
+                }
             }
             cache[serverId] = byHost
             loadedScopes.add(serverId)
@@ -193,9 +209,31 @@ class PersistentCookieJar(
     }
 
     private fun persist(serverId: String) {
+        val hosts = cache[serverId] ?: return
+        // Only the wildcard bucket has the active session for this logical
+        // dashboard. Older host-specific copies can contain a rotated value.
         val snapshot =
-            cache[serverId]?.values?.flatten()?.toList() ?: return
-        storeScope.launch { store.save(serverId, snapshot) }
+            (hosts[WILDCARD_HOST]?.let { bucket -> synchronized(bucket) { bucket.toList() } }.orEmpty() +
+                hosts.filterKeys { it != WILDCARD_HOST }.values.flatMap { bucket ->
+                    synchronized(bucket) { bucket.filterNot(::isSessionCookie) }
+                }).distinctBy { Triple(it.name, it.domain, it.path) }
+        enqueuePersistence { store.save(serverId, snapshot) }
+    }
+
+    private fun enqueuePersistence(operation: suspend () -> Unit) {
+        synchronized(persistenceLock) {
+            val previous = pendingPersistence
+            pendingPersistence =
+                storeScope.async {
+                    previous?.join()
+                    operation()
+                }
+        }
+    }
+
+    /** Wait for the cookie writes triggered by a completed sign-in response. */
+    suspend fun awaitPendingPersistence() {
+        synchronized(persistenceLock) { pendingPersistence }?.await()
     }
 
     /**
@@ -224,7 +262,7 @@ class PersistentCookieJar(
         cache.remove(scope)
         loadedScopes.remove(scope)
         loadLatches.remove(scope)
-        storeScope.launch { store.clear(scope) }
+        enqueuePersistence { store.clear(scope) }
     }
 
     /** Clear every server scope (logout / full reset). */
@@ -232,7 +270,7 @@ class PersistentCookieJar(
         cache.clear()
         loadedScopes.clear()
         loadLatches.clear()
-        storeScope.launch { store.clearAll() }
+        enqueuePersistence { store.clearAll() }
     }
 
     companion object {

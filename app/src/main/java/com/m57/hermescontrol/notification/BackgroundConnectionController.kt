@@ -40,7 +40,7 @@ class BackgroundConnectionController(
             }
 
             val status = HermesWsClient.connectionStatus.value
-            val isEligible = AuthManager.isGatedMode() || !AuthManager.getToken().isNullOrBlank()
+            val isEligible = AuthManager.hasLocalSession()
 
             return BackgroundConnectionSnapshot(
                 appInForeground = ChatNotificationService.isAppInForeground(),

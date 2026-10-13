@@ -41,6 +41,8 @@ class MainActivity : ComponentActivity() {
          */
         const val ACTION_OPEN_CHAT_FROM_NOTIFICATION =
             "com.m57.hermescontrol.ACTION_OPEN_CHAT_FROM_NOTIFICATION"
+        private const val STATE_KANBAN_BOARD = "state_kanban_board"
+        private const val STATE_KANBAN_TASK = "state_kanban_task"
     }
 
     private var baseContextLanguageCode: String = LocaleContextWrapper.SYSTEM_LANGUAGE
@@ -60,14 +62,17 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
+        NavigationController.restorePendingKanbanNavigation(
+            savedInstanceState?.getString(STATE_KANBAN_BOARD),
+            savedInstanceState?.getString(STATE_KANBAN_TASK),
+        )
         consumeNotificationIntent(intent)
 
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.RESUMED) {
                 AuthManager.initializationState.collect { state ->
                     if (state == AuthManager.InitializationState.Ready) {
-                        if (AuthManager.isGatedMode() || !AuthManager.getToken().isNullOrBlank()) {
+                        if (AuthManager.hasLocalSession()) {
                             HermesWsClient.connect()
                         }
                     }
@@ -129,6 +134,14 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         consumeNotificationIntent(intent)
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        NavigationController.pendingKanbanNavigation?.let { pending ->
+            outState.putString(STATE_KANBAN_BOARD, pending.boardSlug)
+            outState.putString(STATE_KANBAN_TASK, pending.taskId)
+        }
+        super.onSaveInstanceState(outState)
     }
 
     override fun onResume() {
