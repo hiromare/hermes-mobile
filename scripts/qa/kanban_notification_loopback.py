@@ -62,8 +62,19 @@ async def api(request: web.Request) -> web.Response:
 
 
 async def ws(request: web.Request) -> web.StreamResponse:
-    if request.path == "/api/plugins/kanban/events" and request.query.get("board") != BOARD:
-        return web.json_response({"error": "board_not_found"}, status=400)
+    global event_seq
+    if request.path == "/api/plugins/kanban/events":
+        if request.query.get("board") != BOARD:
+            return web.json_response({"error": "board_not_found"}, status=400)
+        try:
+            since = int(request.query.get("since", "0"))
+        except ValueError:
+            return web.json_response({"error": "invalid_cursor"}, status=400)
+        if not 0 <= since <= 1_000_000_000_000:
+            return web.json_response({"error": "invalid_cursor"}, status=400)
+        # The app persists an event cursor between QA runs; a fresh test fixture
+        # must emit NEW events rather than replay IDs the app already consumed.
+        event_seq = max(event_seq, since)
     socket = web.WebSocketResponse(heartbeat=30)
     await socket.prepare(request)
     clients.add(socket)

@@ -59,6 +59,23 @@ and `DONE`. The fixture `/metrics` should record a request to
 `/api/plugins/kanban/tasks/t_1234abcd`. This verifies **the same task ID**
 from emitted WebSocket event through system notification into REST-backed UI.
 
+### Repeated runs with an already-persisted event cursor
+
+The test fixture now reads the `since` parameter on the Kanban WebSocket
+subscription and advances its synthetic event sequence to at least that cursor.
+This prevents a new fixture process from replaying event IDs that the app has
+already consumed in earlier QA sessions. Bad or out-of-range cursors are rejected
+with HTTP 400. The fixture contract suite includes tests for both cases.
+
+Verified 2026-10-13 on Mac `emulator-5554`: after logging into the isolated
+fixture, the dev app was force-stopped and launched again **without clearing app
+data**. It reopened the authenticated Chat screen. Backgrounding it reconnected
+the Kanban WebSocket with `since=1008`. A single `/trigger` emitted event 1009;
+Android posted `Hermes Kanban` for `t_1234abcd`. Tapping the real OS notification
+opened `Synthetic E2E alert`, `#1234abcd • dots-personal-agent`, status `DONE`,
+and `/api/plugins/kanban/tasks/t_1234abcd` appeared in fixture metrics.
+This remains isolated synthetic QA, not production account acceptance.
+
 ## Readback and separate production acceptance
 
 Observed 2026-10-12 on Mac Android emulator `Medium_Phone_API_36.1`:

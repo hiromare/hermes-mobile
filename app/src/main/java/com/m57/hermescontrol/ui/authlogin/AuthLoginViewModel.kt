@@ -26,6 +26,7 @@ import com.m57.hermescontrol.data.remote.nativeAuthorizeUrl
 import com.m57.hermescontrol.data.remote.redeemNativeCode
 import com.m57.hermescontrol.data.remote.safeApiCall
 import com.m57.hermescontrol.data.session.ProfileSwitchCoordinator
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -551,6 +552,7 @@ class AuthLoginViewModel(
 
         val jsonBody = AuthPayloads.passwordLogin(username, password, provider ?: "basic")
 
+        var loginCompleted = false
         try {
             // Step 1: Authenticate via the password login endpoint to get a session cookie.
             // IMPORTANT: use the SHARED OkHttpProvider.probe client (it carries the
@@ -564,24 +566,34 @@ class AuthLoginViewModel(
                     .header("Content-Type", "application/json")
                     .post(jsonBody.toRequestBody())
                     .build()
-            val loginResp = OkHttpProvider.probe.newCall(loginReq).await()
-
-            if (!loginResp.isSuccessful) {
-                val msg =
-                    when (loginResp.code) {
-                        401 -> app.getString(R.string.connect_error_401)
-                        403 -> app.getString(R.string.connect_error_403)
-                        else -> app.getString(R.string.connect_error_http_code, loginResp.code)
-                    }
-                _uiState.update { it.copy(isLoading = false, errorMessage = msg) }
-                return null
+            OkHttpProvider.probe.newCall(loginReq).await().use { loginResp ->
+                if (!loginResp.isSuccessful) {
+                    val msg =
+                        when (loginResp.code) {
+                            401 -> app.getString(R.string.connect_error_401)
+                            403 -> app.getString(R.string.connect_error_403)
+                            else -> app.getString(R.string.connect_error_http_code, loginResp.code)
+                        }
+                    _uiState.update { it.copy(isLoading = false, errorMessage = msg) }
+                    return null
+                }
             }
+            loginCompleted = true
             // The session cookie is now captured in the shared CookieManager.cookieJar
             // (issue #470). The ws-ticket request below uses the same jar, so the
             // authenticated session carries over automatically.
 
-            return mintTicket(endpoint)
+            val ticket = mintTicket(endpoint)
+            if (ticket == null) {
+                CookieManager.setSessionCookie(null, endpoint)
+                return null
+            }
+            CookieManager.awaitPendingPersistence()
+            return ticket
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
+            if (loginCompleted) CookieManager.setSessionCookie(null, endpoint)
             _uiState.update {
                 it.copy(
                     isLoading = false,
@@ -758,7 +770,17 @@ class AuthLoginViewModel(
                     CookieManager.setSessionCookie(null, endpoint)
                     BrowserOutcome()
                 } else {
-                    BrowserOutcome(wsTicket = ticket.wsCredential)
+                    try {
+                        CookieManager.awaitPendingPersistence()
+                        BrowserOutcome(wsTicket = ticket.wsCredential)
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        CookieManager.setSessionCookie(null, endpoint)
+                        BrowserOutcome(
+                            error = app.getString(R.string.connect_error_connection_failed, e.message ?: ""),
+                        )
+                    }
                 }
             }
 

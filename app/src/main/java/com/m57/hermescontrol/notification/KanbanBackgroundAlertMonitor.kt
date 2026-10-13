@@ -6,6 +6,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.util.Log
 import androidx.core.app.NotificationCompat
@@ -26,13 +27,12 @@ import kotlinx.serialization.decodeFromString
 
 private val BOARD_SLUG_PATTERN = Regex("[a-zA-Z0-9][a-zA-Z0-9_-]{0,79}")
 private const val MAX_MONITORED_BOARDS = 12
-private const val KANBAN_NOTIFICATION_BASE = 20_000
 
-/** Stable board-scoped ID: independent boards may contain the same task ID. */
-internal fun kanbanNotificationId(
+/** Collision-free task identity across boards. */
+internal fun kanbanNotificationTag(
     board: String,
     taskId: String,
-): Int = KANBAN_NOTIFICATION_BASE + ((board + "|" + taskId).hashCode() and 0x00ffffff)
+): String = "kanban:$board:$taskId"
 
 /** Notifications are for terminal or human-action events, never heartbeat noise. */
 internal fun kanbanEventAlertKind(kind: String): String? =
@@ -151,13 +151,21 @@ internal class KanbanBackgroundAlertMonitor(
             Intent(context, KanbanNotificationTapActivity::class.java).apply {
                 setPackage(context.packageName)
                 action = KanbanNotificationTapActivity.ACTION_OPEN_KANBAN_NOTIFICATION
+                data =
+                    Uri
+                        .Builder()
+                        .scheme("hermes-kanban")
+                        .authority("task")
+                        .appendPath(board)
+                        .appendPath(taskId)
+                        .build()
                 putExtra(KanbanNotificationTapActivity.EXTRA_KANBAN_BOARD, board)
                 putExtra(KanbanNotificationTapActivity.EXTRA_KANBAN_TASK, taskId)
             }
         val pendingIntent =
             PendingIntent.getActivity(
                 context,
-                (board + "|" + taskId).hashCode(),
+                0,
                 intent,
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
             )
@@ -175,7 +183,7 @@ internal class KanbanBackgroundAlertMonitor(
                 .setContentIntent(pendingIntent)
                 .build()
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        manager.notify(kanbanNotificationId(board, taskId), notification)
+        manager.notify(kanbanNotificationTag(board, taskId), 0, notification)
     }
 
     private companion object {

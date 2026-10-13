@@ -130,6 +130,11 @@ object CookieManager {
         j.replaceCookies(url, cookies, SESSION_FAMILY_COOKIE_NAMES)
     }
 
+    /** Complete encrypted writes before reporting a new sign-in as saved. */
+    suspend fun awaitPendingPersistence() {
+        jar?.awaitPendingPersistence()
+    }
+
     private const val SESSION_COOKIE_LIFETIME_MS = 10L * 365 * 24 * 60 * 60 * 1000
     private const val REFRESH_COOKIE_LIFETIME_MS = 30L * 24 * 60 * 60 * 1000
 

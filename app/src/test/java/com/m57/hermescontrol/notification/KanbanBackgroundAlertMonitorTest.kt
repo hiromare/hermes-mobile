@@ -16,13 +16,20 @@ import org.junit.Test
 
 class KanbanBackgroundAlertMonitorTest {
     @Test
-    fun `notification IDs are scoped to board and task`() {
+    fun `notification tags are scoped to board and task`() {
         val task = "t_1234abcd"
-        val first = kanbanNotificationId("dots-personal-agent", task)
-        val second = kanbanNotificationId("other-board", task)
+        val first = kanbanNotificationTag("dots-personal-agent", task)
+        val second = kanbanNotificationTag("other-board", task)
         assertNotEquals(first, second)
-        assertEquals(first, kanbanNotificationId("dots-personal-agent", task))
-        assertNotEquals(first, kanbanNotificationId("dots-personal-agent", "t_ffffffff"))
+        assertEquals(first, kanbanNotificationTag("dots-personal-agent", task))
+        assertNotEquals(first, kanbanNotificationTag("dots-personal-agent", "t_ffffffff"))
+    }
+
+    @Test
+    fun `tags cannot collide even when the Java hash does`() {
+        val task = "t_1234abcd"
+        assertEquals(("Aa|" + task).hashCode(), ("BB|" + task).hashCode())
+        assertNotEquals(kanbanNotificationTag("Aa", task), kanbanNotificationTag("BB", task))
     }
 
     @Test

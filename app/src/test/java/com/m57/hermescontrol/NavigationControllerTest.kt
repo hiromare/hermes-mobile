@@ -179,6 +179,17 @@ class NavigationControllerTest {
     }
 
     @Test
+    fun `restored kanban target does not override newer notification`() {
+        NavigationController.restorePendingKanbanNavigation("default", "t_1234abcd")
+        NavigationController.openKanbanTaskFromNotification("other", "t_5678abcd")
+        NavigationController.restorePendingKanbanNavigation("default", "t_1234abcd")
+        assertEquals(
+            PendingKanbanNavigation("other", "t_5678abcd"),
+            NavigationController.pendingKanbanNavigation,
+        )
+    }
+
+    @Test
     fun `history chat request does not force bottom`() {
         NavigationController.backStack = NavBackStack<NavKey>(HistoryScreen)
 

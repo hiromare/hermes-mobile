@@ -17,8 +17,8 @@ class DashboardNavigationCredentialTest {
     }
 
     @Test
-    fun `gated ws ticket grants navigation while cookie is being refreshed`() {
-        assertTrue(hasDashboardNavigationCredential("ws-ticket", gatedMode = true, sessionCookie = null))
+    fun `gated ws ticket without session cookie does not grant navigation`() {
+        assertFalse(hasDashboardNavigationCredential("ws-ticket", gatedMode = true, sessionCookie = null))
     }
 
     @Test

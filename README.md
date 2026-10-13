@@ -244,6 +244,14 @@ cd hermes-mobile
 adb install app/build/outputs/apk/debug/app-debug.apk
 ```
 
+Debug builds use the separate `com.m57.hermescontrol.dev` package. To update that
+package without removing its app data, use
+`adb install -r app/build/outputs/apk/debug/app-debug.apk`. Updating the original
+`com.m57.hermescontrol` package also requires an APK signed with its existing
+signing key. Do not uninstall either package to update it: uninstalling removes
+its local sign-in state. This app sets `android:allowBackup="false"`, so do not
+rely on Android Auto Backup to recover that state after a fresh install.
+
 For release builds, set the keystore environment variables (`KEYSTORE_PATH`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`). Or let the GitHub Actions release workflow build on a `v*` tag push.
 
 ### Nix emulator

@@ -319,6 +319,14 @@ object AuthManager {
      */
     fun getSessionCookie(): String? = CookieManager.getSessionCookie()
 
+    /** A local sign-in artifact exists; the server still validates it on reconnect. */
+    fun hasLocalSession(): Boolean = hasLocalSession(if (isGatedMode()) null else getToken())
+
+    fun hasLocalSession(token: String?): Boolean {
+        val gated = isGatedMode()
+        return hasLocalSession(gated, token, if (gated) getSessionCookie() else null)
+    }
+
     fun setSessionCookie(cookie: String?) {
         CookieManager.setSessionCookie(cookie, endpoint())
     }

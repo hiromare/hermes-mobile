@@ -4,6 +4,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runTest
 import okhttp3.Cookie
 import okhttp3.HttpUrl.Companion.toHttpUrl
@@ -127,6 +128,68 @@ class PersistentCookieJarTest {
             jar2.useStore("persist-scope")
             val reloaded = jar2.loadForRequest("http://p.local/".toHttpUrl())
             assertEquals("persisted-value", reloaded.firstOrNull()?.value)
+        }
+
+    @Test
+    fun persistence_restoresSessionMirrorForAnotherHostInSameScope() =
+        runTest {
+            val store = FakeEncryptedCookieStore()
+            val scope = CoroutineScope(Dispatchers.Unconfined)
+            val first = PersistentCookieJar(store = store, storeScope = scope)
+            first.useStore("same-dashboard")
+            first.saveFromResponse(
+                "https://lan.local/".toHttpUrl(),
+                listOf(sessionCookie("lan.local", "persisted-session")),
+            )
+            assertEquals(1, store.storedHolders("same-dashboard").size)
+
+            val restarted = PersistentCookieJar(store = store, storeScope = scope)
+            restarted.useStore("same-dashboard")
+            val viaAnotherAddress = restarted.loadForRequest("https://remote.local/api/status".toHttpUrl())
+            assertEquals("persisted-session", viaAnotherAddress.single().value)
+
+            restarted.useStore("different-dashboard")
+            assertTrue(restarted.loadForRequest("https://remote.local/api/status".toHttpUrl()).isEmpty())
+        }
+
+    @Test
+    fun persistence_prefersRotatedSessionAcrossDashboardAddresses() =
+        runTest {
+            val store = FakeEncryptedCookieStore()
+            val scope = CoroutineScope(Dispatchers.Unconfined)
+            val first = PersistentCookieJar(store = store, storeScope = scope)
+            first.useStore("same-dashboard")
+            first.saveFromResponse(
+                "https://lan.local/".toHttpUrl(),
+                listOf(sessionCookie("lan.local", "old-session")),
+            )
+            first.saveFromResponse(
+                "https://remote.local/".toHttpUrl(),
+                listOf(sessionCookie("remote.local", "rotated-session")),
+            )
+
+            val restarted = PersistentCookieJar(store = store, storeScope = scope)
+            restarted.useStore("same-dashboard")
+            assertEquals(
+                "rotated-session",
+                restarted.loadForRequest("https://lan.local/api/status".toHttpUrl()).single().value,
+            )
+        }
+
+    @Test
+    fun pendingPersistenceKeepsLatestSessionAcrossRestart() =
+        runTest {
+            val store = FakeEncryptedCookieStore()
+            val jar = PersistentCookieJar(store, CoroutineScope(StandardTestDispatcher(testScheduler)))
+            jar.useStore("same-dashboard")
+            val url = "https://lan.local/".toHttpUrl()
+            jar.saveFromResponse(url, listOf(sessionCookie("lan.local", "old-session")))
+            jar.saveFromResponse(url, listOf(sessionCookie("lan.local", "new-session")))
+            jar.awaitPendingPersistence()
+
+            val restarted = PersistentCookieJar(store, CoroutineScope(Dispatchers.Unconfined))
+            restarted.useStore("same-dashboard")
+            assertEquals("new-session", restarted.getSessionCookieValue())
         }
 
     @Test

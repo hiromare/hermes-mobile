@@ -5,6 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
+import com.m57.hermescontrol.data.local.hasLocalSession
 import com.m57.hermescontrol.data.model.ProjectInfo
 
 /** Whether this local profile has a potential dashboard auth credential.
@@ -17,7 +18,7 @@ internal fun hasDashboardNavigationCredential(
     token: String?,
     gatedMode: Boolean,
     sessionCookie: String?,
-): Boolean = !token.isNullOrBlank() || (gatedMode && !sessionCookie.isNullOrBlank())
+): Boolean = hasLocalSession(gated = gatedMode, token = token, sessionCookie = sessionCookie)
 
 data class PendingChatNavigation(
     val sessionId: String,
@@ -134,6 +135,14 @@ object NavigationController {
 
     fun consumePendingKanbanNavigation() {
         pendingKanbanNavigation = null
+    }
+
+    fun restorePendingKanbanNavigation(
+        boardSlug: String?,
+        taskId: String?,
+    ) {
+        if (pendingKanbanNavigation != null || boardSlug == null || taskId == null) return
+        openKanbanTaskFromNotification(boardSlug, taskId)
     }
 
     fun openChatSessionFromNotification(sessionId: String) {
