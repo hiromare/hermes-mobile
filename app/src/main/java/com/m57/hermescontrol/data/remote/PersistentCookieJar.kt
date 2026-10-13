@@ -213,10 +213,12 @@ class PersistentCookieJar(
         // Only the wildcard bucket has the active session for this logical
         // dashboard. Older host-specific copies can contain a rotated value.
         val snapshot =
-            (hosts[WILDCARD_HOST]?.let { bucket -> synchronized(bucket) { bucket.toList() } }.orEmpty() +
-                hosts.filterKeys { it != WILDCARD_HOST }.values.flatMap { bucket ->
-                    synchronized(bucket) { bucket.filterNot(::isSessionCookie) }
-                }).distinctBy { Triple(it.name, it.domain, it.path) }
+            (
+                hosts[WILDCARD_HOST]?.let { bucket -> synchronized(bucket) { bucket.toList() } }.orEmpty() +
+                    hosts.filterKeys { it != WILDCARD_HOST }.values.flatMap { bucket ->
+                        synchronized(bucket) { bucket.filterNot(::isSessionCookie) }
+                    }
+            ).distinctBy { Triple(it.name, it.domain, it.path) }
         enqueuePersistence { store.save(serverId, snapshot) }
     }
 

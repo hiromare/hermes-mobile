@@ -90,11 +90,13 @@ class EncryptedCookieStore(
             // blocks the caller (e.g. main thread) during app startup.
             val migrated = readLegacyCookie()
             val persisted =
-                prefs.getString(keyFor(serverId), null)?.let { raw ->
-                    runCatching {
-                        json.decodeFromString<List<CookieHolder>>(raw).mapNotNull { it.toCookie() }
-                    }.getOrDefault(emptyList())
-                }.orEmpty()
+                prefs
+                    .getString(keyFor(serverId), null)
+                    ?.let { raw ->
+                        runCatching {
+                            json.decodeFromString<List<CookieHolder>>(raw).mapNotNull { it.toCookie() }
+                        }.getOrDefault(emptyList())
+                    }.orEmpty()
             val merged = (persisted + migrated).distinctBy { Triple(it.name, it.domain, it.path) }
             if (migrated.isNotEmpty()) {
                 // Copy first, then remove the legacy source. Removing it before
@@ -103,7 +105,11 @@ class EncryptedCookieStore(
                 check(prefs.edit().putString(keyFor(serverId), encoded).commit()) {
                     "Unable to migrate encrypted cookies"
                 }
-                legacyPrefsDeferred?.await()?.edit()?.remove(LEGACY_SESSION_COOKIE_KEY)?.commit()
+                legacyPrefsDeferred
+                    ?.await()
+                    ?.edit()
+                    ?.remove(LEGACY_SESSION_COOKIE_KEY)
+                    ?.commit()
             }
             merged
         }

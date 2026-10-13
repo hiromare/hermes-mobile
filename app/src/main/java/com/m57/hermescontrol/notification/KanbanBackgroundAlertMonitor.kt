@@ -27,8 +27,12 @@ import kotlinx.serialization.decodeFromString
 
 private val BOARD_SLUG_PATTERN = Regex("[a-zA-Z0-9][a-zA-Z0-9_-]{0,79}")
 private const val MAX_MONITORED_BOARDS = 12
+
 /** Collision-free task identity across boards. */
-internal fun kanbanNotificationTag(board: String, taskId: String): String = "kanban:$board:$taskId"
+internal fun kanbanNotificationTag(
+    board: String,
+    taskId: String,
+): String = "kanban:$board:$taskId"
 
 /** Notifications are for terminal or human-action events, never heartbeat noise. */
 internal fun kanbanEventAlertKind(kind: String): String? =
@@ -148,7 +152,8 @@ internal class KanbanBackgroundAlertMonitor(
                 setPackage(context.packageName)
                 action = KanbanNotificationTapActivity.ACTION_OPEN_KANBAN_NOTIFICATION
                 data =
-                    Uri.Builder()
+                    Uri
+                        .Builder()
                         .scheme("hermes-kanban")
                         .authority("task")
                         .appendPath(board)

@@ -137,7 +137,10 @@ object NavigationController {
         pendingKanbanNavigation = null
     }
 
-    fun restorePendingKanbanNavigation(boardSlug: String?, taskId: String?) {
+    fun restorePendingKanbanNavigation(
+        boardSlug: String?,
+        taskId: String?,
+    ) {
         if (pendingKanbanNavigation != null || boardSlug == null || taskId == null) return
         openKanbanTaskFromNotification(boardSlug, taskId)
     }
