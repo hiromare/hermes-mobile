@@ -17,9 +17,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.m57.hermescontrol.R
 import com.m57.hermescontrol.theme.LocalSpacing
 
 @Composable
@@ -46,7 +48,7 @@ fun PinnedSectionHeader(
         )
         Spacer(modifier = Modifier.width(spacing.xs))
         Text(
-            text = "Pinned ($count)",
+            text = stringResource(R.string.sessions_pinned_header, count),
             style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.primary,
@@ -54,7 +56,14 @@ fun PinnedSectionHeader(
         Spacer(modifier = Modifier.weight(1f))
         Icon(
             imageVector = if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
-            contentDescription = if (expanded) "Collapse pinned sessions" else "Expand pinned sessions",
+            contentDescription =
+                if (expanded) {
+                    stringResource(
+                        R.string.sessions_collapse_pinned,
+                    )
+                } else {
+                    stringResource(R.string.sessions_expand_pinned)
+                },
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(20.dp),
         )

@@ -198,11 +198,11 @@ internal fun TelegramOnboardingDialog(
         dismissButton = {
             when (state.onboardingPhase) {
                 OnboardingPhase.READY -> {
-                    TextButton(onClick = onDismiss) { Text("Cancel") }
+                    TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
                 }
 
                 OnboardingPhase.WAITING -> {
-                    TextButton(onClick = onDismiss) { Text("Cancel") }
+                    TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
                 }
 
                 OnboardingPhase.IDLE, OnboardingPhase.STARTING, OnboardingPhase.APPLYING -> {}

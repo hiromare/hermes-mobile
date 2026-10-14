@@ -460,7 +460,7 @@ private fun TaskOverviewTab(
             ) {
                 Column(modifier = Modifier.padding(12.dp)) {
                     Text(
-                        text = "Attributes",
+                        text = stringResource(R.string.kanban_task_attributes),
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary,
@@ -762,7 +762,7 @@ private fun TaskOverviewTab(
                 ) {
                     Column(modifier = Modifier.padding(12.dp)) {
                         Text(
-                            text = "Latest Outcome / Summary",
+                            text = stringResource(R.string.kanban_task_latest_summary),
                             style = MaterialTheme.typography.labelLarge,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary,

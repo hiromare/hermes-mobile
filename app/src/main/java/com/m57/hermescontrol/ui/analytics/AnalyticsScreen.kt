@@ -189,17 +189,17 @@ private fun AnalyticsContent(
                 Tab(
                     selected = selectedSectionTab == 0,
                     onClick = { selectedSectionTab = 0 },
-                    text = { Text("Models") },
+                    text = { Text(stringResource(R.string.screen_models)) },
                 )
                 Tab(
                     selected = selectedSectionTab == 1,
                     onClick = { selectedSectionTab = 1 },
-                    text = { Text("Skills") },
+                    text = { Text(stringResource(R.string.screen_skills)) },
                 )
                 Tab(
                     selected = selectedSectionTab == 2,
                     onClick = { selectedSectionTab = 2 },
-                    text = { Text("Tools") },
+                    text = { Text(stringResource(R.string.analytics_tab_tools)) },
                 )
             }
         }

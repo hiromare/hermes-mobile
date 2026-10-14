@@ -1011,7 +1011,7 @@ fun SessionsScreen(
                                         }
                                         item(key = "history_header") {
                                             Text(
-                                                text = "History",
+                                                text = stringResource(R.string.screen_history),
                                                 style = MaterialTheme.typography.labelLarge,
                                                 fontWeight = FontWeight.Bold,
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant,

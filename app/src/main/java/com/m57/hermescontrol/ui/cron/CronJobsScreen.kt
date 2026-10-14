@@ -350,7 +350,7 @@ fun CronJobsScreen(
                 }
             },
             confirmButton = {
-                TextButton(onClick = { selectedJob = null }) { Text("Close") }
+                TextButton(onClick = { selectedJob = null }) { Text(stringResource(R.string.action_close)) }
             },
         )
     }

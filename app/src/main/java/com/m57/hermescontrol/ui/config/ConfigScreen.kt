@@ -243,7 +243,7 @@ private fun ConfigContent(
                                     modifier = Modifier.width(16.dp),
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
-                                Text("Save", style = MaterialTheme.typography.labelMedium)
+                                Text(stringResource(R.string.action_save), style = MaterialTheme.typography.labelMedium)
                             }
                         }
                     }
