@@ -35,9 +35,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.m57.hermescontrol.R
 
 @Composable
 private fun SelfImprovementReviewCard(
@@ -55,9 +57,9 @@ private fun SelfImprovementReviewCard(
     val icon: ImageVector = if (isSkill) Icons.Filled.Build else Icons.Filled.Psychology
     val title =
         if (isSkill) {
-            "Self-Improvement Review • Skill Patched"
+            stringResource(R.string.chat_self_improvement_skill_patched)
         } else {
-            "Self-Improvement Review • Memory Updated"
+            stringResource(R.string.chat_self_improvement_memory_updated)
         }
 
     Card(
@@ -165,7 +167,7 @@ internal fun SystemBubble(
                                     modifier = Modifier.size(16.dp),
                                 )
                                 Spacer(Modifier.width(4.dp))
-                                Text("Deny")
+                                Text(stringResource(R.string.chat_approval_deny))
                             }
                         }
 
@@ -187,7 +189,7 @@ internal fun SystemBubble(
                                     modifier = Modifier.size(16.dp),
                                 )
                                 Spacer(Modifier.width(4.dp))
-                                Text("Allow session")
+                                Text(stringResource(R.string.chat_approval_allow_session))
                             }
                         }
 
@@ -209,7 +211,7 @@ internal fun SystemBubble(
                                     modifier = Modifier.size(16.dp),
                                 )
                                 Spacer(Modifier.width(4.dp))
-                                Text("Always allow")
+                                Text(stringResource(R.string.chat_approval_always_allow))
                             }
                         }
 
@@ -243,7 +245,7 @@ internal fun SystemBubble(
             if (confirmAlways) {
                 AlertDialog(
                     onDismissRequest = { confirmAlways = false },
-                    title = { Text("Always allow this command?") },
+                    title = { Text(stringResource(R.string.chat_approval_always_allow_confirm)) },
                     text = {
                         Text(
                             "This persists the pattern permanently so future " +
@@ -257,12 +259,12 @@ internal fun SystemBubble(
                                 onRespondApproval("always")
                             },
                         ) {
-                            Text("Always allow")
+                            Text(stringResource(R.string.chat_approval_always_allow))
                         }
                     },
                     dismissButton = {
                         TextButton(onClick = { confirmAlways = false }) {
-                            Text("Cancel")
+                            Text(stringResource(R.string.action_cancel))
                         }
                     },
                 )

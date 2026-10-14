@@ -412,6 +412,7 @@
     <string name="settings_item_language">Language</string>
     <string name="language_system">System</string>
     <string name="language_english">English</string>
+    <string name="language_japanese">日本語</string>
     <string name="language_arabic">العربية</string>
     <string name="language_chinese">简体中文</string>
     <string name="language_korean">한국어</string>
@@ -1912,4 +1913,28 @@
     <string name="trust_user_cas_description">Trust system CAs and any CA installed in Android’s user certificate store for all connections. Any user-installed CA can authenticate servers for this app. Certificate and hostname checks remain enabled. Off by default.</string>
     <string name="trust_user_cas_save_failed">Could not save the trust setting. Please try again.</string>
     <string name="trust_user_cas_restart_required">Restart the app process to apply this change.</string>
+    <string name="chat_approval_deny">Deny</string>
+    <string name="chat_approval_allow_session">Allow session</string>
+    <string name="chat_approval_always_allow">Always allow</string>
+    <string name="chat_approval_always_allow_confirm">Always allow this command?</string>
+    <string name="chat_self_improvement_skill_patched">Self-Improvement Review • Skill Patched</string>
+    <string name="chat_self_improvement_memory_updated">Self-Improvement Review • Memory Updated</string>
+    <string name="chat_clarify_answered">Answered: %1$s</string>
+    <string name="chat_clarify_select_all">Select all that apply</string>
+    <string name="chat_side_question">Side Question</string>
+    <string name="chat_side_question_label">Question</string>
+    <string name="chat_side_question_answering">Answering from conversation snapshot...</string>
+    <string name="chat_side_question_answer">Answer</string>
+    <string name="kanban_task_attributes">Attributes</string>
+    <string name="kanban_task_latest_summary">Latest Outcome / Summary</string>
+    <string name="kanban_filter_view_options">Filters &amp; View Options</string>
+    <string name="kanban_filter_current_step">Current step</string>
+    <string name="sessions_pinned_header">Pinned (%1$d)</string>
+    <string name="sessions_collapse_pinned">Collapse pinned sessions</string>
+    <string name="sessions_expand_pinned">Expand pinned sessions</string>
+    <string name="channels_gateway_not_running">The gateway is not running. Configure channels here, then start the gateway with:</string>
+    <string name="analytics_tab_tools">Tools</string>
+    <string name="action_change">Change</string>
+    <string name="action_continue">Continue</string>
+    <string name="model_moa_aggregator">Aggregator</string>
 </resources>

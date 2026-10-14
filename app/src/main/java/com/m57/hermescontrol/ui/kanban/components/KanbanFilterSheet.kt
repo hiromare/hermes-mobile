@@ -63,7 +63,7 @@ fun KanbanFilterSheet(
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text(
-                    text = "Filters & View Options",
+                    text = stringResource(R.string.kanban_filter_view_options),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                 )
@@ -123,7 +123,11 @@ fun KanbanFilterSheet(
                     onSelectWorkflowFilters(value, selectedCurrentStepKey)
                 }
             }
-            Text("Current step", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+            Text(
+                stringResource(R.string.kanban_filter_current_step),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+            )
             FilterChoiceRow("All steps", selectedCurrentStepKey == null) {
                 onSelectWorkflowFilters(selectedWorkflowTemplateId, null)
             }

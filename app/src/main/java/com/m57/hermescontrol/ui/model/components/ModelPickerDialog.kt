@@ -192,7 +192,7 @@ fun ModelPickerDialog(
                                         modifier = Modifier.size(16.dp),
                                     )
                                     Text(
-                                        text = "Pinned",
+                                        text = stringResource(R.string.sessions_pinned_indicator),
                                         style = MaterialTheme.typography.labelLarge,
                                         fontWeight = FontWeight.Bold,
                                         color = MaterialTheme.colorScheme.primary,

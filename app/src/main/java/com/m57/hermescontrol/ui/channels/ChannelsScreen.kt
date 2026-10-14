@@ -285,7 +285,7 @@ private fun GatewayOfflineBanner(gatewayCommand: String) {
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "The gateway is not running. Configure channels here, then start the gateway with:",
+                    text = stringResource(R.string.channels_gateway_not_running),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

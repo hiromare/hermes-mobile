@@ -248,12 +248,12 @@ fun ModelScreen(
             text = { Text(state.modelPickerConfirmMessage!!) },
             confirmButton = {
                 Button(onClick = { viewModel.confirmModelPickerExpensive() }) {
-                    Text("Continue")
+                    Text(stringResource(R.string.action_continue))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { viewModel.dismissModelPickerConfirm() }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.action_cancel))
                 }
             },
         )
@@ -536,7 +536,7 @@ private fun AuxTasksDialog(
                             onClick = { onSetTask(info.key) },
                             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
                         ) {
-                            Text("Change", style = MaterialTheme.typography.labelSmall)
+                            Text(stringResource(R.string.action_change), style = MaterialTheme.typography.labelSmall)
                         }
                     }
                     HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp))
@@ -558,7 +558,7 @@ private fun AuxTasksDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text("Close") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_close)) }
         },
     )
 }

@@ -289,7 +289,7 @@ fun SkillsStep(
                                         modifier = Modifier.size(16.dp),
                                     )
                                 } else {
-                                    Text("Add")
+                                    Text(stringResource(R.string.action_add))
                                 }
                             }
                         }

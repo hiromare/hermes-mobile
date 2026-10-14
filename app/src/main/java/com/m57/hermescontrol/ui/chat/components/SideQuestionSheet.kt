@@ -37,9 +37,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.m57.hermescontrol.R
 import com.m57.hermescontrol.ui.chat.BtwUiState
 import com.m57.hermescontrol.ui.chat.MarkdownText
 
@@ -85,7 +87,7 @@ fun SideQuestionSheet(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Side Question",
+                        text = stringResource(R.string.chat_side_question),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface,
@@ -114,7 +116,7 @@ fun SideQuestionSheet(
                 ) {
                     Column(modifier = Modifier.padding(12.dp)) {
                         Text(
-                            text = "Question",
+                            text = stringResource(R.string.chat_side_question_label),
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary,
@@ -148,7 +150,7 @@ fun SideQuestionSheet(
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
-                        text = "Answering from conversation snapshot...",
+                        text = stringResource(R.string.chat_side_question_answering),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -202,7 +204,7 @@ fun SideQuestionSheet(
                             horizontalArrangement = Arrangement.SpaceBetween,
                         ) {
                             Text(
-                                text = "Answer",
+                                text = stringResource(R.string.chat_side_question_answer),
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.primary,
