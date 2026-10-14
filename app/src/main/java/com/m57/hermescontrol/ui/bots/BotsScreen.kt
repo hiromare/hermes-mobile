@@ -68,9 +68,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.m57.hermescontrol.ChatScreen
 import com.m57.hermescontrol.NavigationController
 import com.m57.hermescontrol.R
+import com.m57.hermescontrol.data.local.AuthManager
 import com.m57.hermescontrol.data.model.ProfileInfo
+import com.m57.hermescontrol.ui.bots.screen.BotScreenDockState
 import com.m57.hermescontrol.ui.common.BotAvatar
 import com.m57.hermescontrol.ui.common.EmptyState
 import com.m57.hermescontrol.ui.common.ErrorState
@@ -438,6 +441,13 @@ fun BotsScreen(
                                                 onEditClick = {
                                                     editingBot = profile
                                                 },
+                                                onScreenClick = {
+                                                    // The bot and the chat must share a profile: a screen-only RPC
+                                                    // must never be paired with an unrelated session.
+                                                    AuthManager.setActiveProfileId(profile.name)
+                                                    BotScreenDockState.show(profile.name)
+                                                    NavigationController.navigateTo(ChatScreen)
+                                                },
                                             )
                                         }
                                     }
@@ -558,6 +568,7 @@ private fun BotCard(
     isActiveProfile: Boolean,
     onClick: () -> Unit,
     onEditClick: () -> Unit,
+    onScreenClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val botMeta = profile.botMeta()
@@ -652,6 +663,16 @@ private fun BotCard(
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
+            }
+            IconButton(
+                onClick = onScreenClick,
+                modifier = Modifier.testTag("bot_screen_button_${profile.name}"),
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Visibility,
+                    contentDescription = stringResource(R.string.bot_screen_open),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
             IconButton(
                 onClick = onEditClick,
