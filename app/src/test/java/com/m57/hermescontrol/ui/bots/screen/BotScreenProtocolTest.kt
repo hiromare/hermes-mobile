@@ -52,6 +52,27 @@ class BotScreenProtocolTest {
     }
 
     @Test
+    fun bundledAssetsShareDashboardOriginWithoutAllowingRemoteContent() {
+        val endpoint = ServerEndpoint.parse("https://example.com/hermes/")
+        val page = BotScreenAssets.pageUrl(endpoint)
+        assertEquals("https://example.com/hermes/mobile-bot-screen/index.html", page)
+        assertEquals("bot_screen/index.html", BotScreenAssets.localAssetPath(page, endpoint))
+        assertEquals(
+            "bot_screen/novnc/core/rfb.js",
+            BotScreenAssets.localAssetPath("https://example.com/hermes/mobile-bot-screen/novnc/core/rfb.js", endpoint),
+        )
+        assertEquals(
+            null,
+            BotScreenAssets.localAssetPath("https://evil.example/mobile-bot-screen/index.html", endpoint),
+        )
+        assertEquals(
+            null,
+            BotScreenAssets.localAssetPath("https://example.com/hermes/mobile-bot-screen/../api/status", endpoint),
+        )
+        assertEquals(null, BotScreenAssets.localAssetPath("https://example.com/hermes/api/status", endpoint))
+    }
+
+    @Test
     fun stoppedAndForeignLeaseRemainViewOnly() {
         val status =
             BotScreenProtocol.parseStatus(

@@ -2,7 +2,6 @@ package com.m57.hermescontrol.ui.bots.screen
 
 import android.annotation.SuppressLint
 import android.graphics.Color
-import android.net.Uri
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
@@ -32,6 +31,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.m57.hermescontrol.data.local.AuthManager
+import com.m57.hermescontrol.data.remote.ServerEndpoint
 import com.m57.hermescontrol.data.ws.HermesWsClient
 import com.m57.hermescontrol.data.ws.toJsonElement
 import com.m57.hermescontrol.ui.common.HermesScaffold
@@ -45,18 +45,27 @@ import kotlinx.coroutines.launch
 import org.json.JSONObject
 import java.io.ByteArrayInputStream
 
-private const val SCREEN_ASSET_ORIGIN = "https://appassets.androidplatform.net"
-private const val SCREEN_ASSET_PATH = "/bot_screen/"
+private const val SCREEN_VIRTUAL_ROOT = "mobile-bot-screen/"
 
-/** A local asset-only origin. No remote HTML or Javascript can access the display ticket. */
+/**
+ * Serve only packaged assets under a virtual path of the configured dashboard origin.
+ * The display WebSocket rejects foreign Origin headers, so appassets.androidplatform.net
+ * cannot act as the viewer origin. Intercept all WebView resource requests instead of
+ * fetching HTML/JS from the network; no server changes or Origin-policy exemptions.
+ */
 internal object BotScreenAssets {
-    fun localAssetPath(url: Uri): String? {
-        if (url.scheme != "https" || url.host != "appassets.androidplatform.net" || url.port != -1) return null
-        val path = url.path ?: return null
-        if (!path.startsWith(SCREEN_ASSET_PATH)) return null
-        val relative = path.removePrefix("/")
+    fun pageUrl(endpoint: ServerEndpoint): String = endpoint.resolve("${SCREEN_VIRTUAL_ROOT}index.html").toString()
+
+    fun localAssetPath(
+        url: String,
+        endpoint: ServerEndpoint,
+    ): String? {
+        val root = endpoint.resolve(SCREEN_VIRTUAL_ROOT).toString()
+        if (!url.startsWith(root)) return null
+        val relative = url.removePrefix(root)
+        if (!Regex("[A-Za-z0-9_./-]+").matches(relative)) return null
         if (relative.split('/').any { it.isBlank() || it == "." || it == ".." }) return null
-        return relative
+        return "bot_screen/$relative"
     }
 }
 
@@ -67,6 +76,8 @@ fun BotScreenView(
     onBack: () -> Unit,
 ) {
     val context = LocalContext.current
+    val displayEndpoint = remember(profile) { AuthManager.endpointForBuild() }
+    val displayPageUrl = remember(displayEndpoint) { BotScreenAssets.pageUrl(displayEndpoint) }
     val scope = rememberCoroutineScope()
     var status by remember(profile) { mutableStateOf<BotScreenProtocol.Status?>(null) }
     var viewerId by remember(profile) { mutableStateOf<String?>(null) }
@@ -302,7 +313,21 @@ fun BotScreenView(
                                         view: WebView?,
                                         request: WebResourceRequest?,
                                     ): WebResourceResponse? {
-                                        val path = request?.url?.let(BotScreenAssets::localAssetPath) ?: return null
+                                        val path =
+                                            request?.url?.toString()?.let {
+                                                BotScreenAssets.localAssetPath(
+                                                    it,
+                                                    displayEndpoint,
+                                                )
+                                            }
+                                                ?: return WebResourceResponse(
+                                                    "text/plain",
+                                                    "UTF-8",
+                                                    403,
+                                                    "Forbidden",
+                                                    emptyMap(),
+                                                    ByteArrayInputStream(ByteArray(0)),
+                                                )
                                         val mime =
                                             when {
                                                 path.endsWith(".html") -> "text/html"
@@ -327,22 +352,19 @@ fun BotScreenView(
                                     override fun shouldOverrideUrlLoading(
                                         view: WebView?,
                                         request: WebResourceRequest?,
-                                    ): Boolean =
-                                        request?.url?.toString() != "$SCREEN_ASSET_ORIGIN${SCREEN_ASSET_PATH}index.html"
+                                    ): Boolean = request?.url?.toString() != displayPageUrl
 
                                     override fun onPageFinished(
                                         view: WebView?,
                                         url: String?,
                                     ) {
-                                        if (url ==
-                                            "$SCREEN_ASSET_ORIGIN${SCREEN_ASSET_PATH}index.html"
-                                        ) {
+                                        if (url == displayPageUrl) {
                                             viewerReady = true
                                         }
                                     }
                                 }
                             webView = this
-                            loadUrl("$SCREEN_ASSET_ORIGIN${SCREEN_ASSET_PATH}index.html")
+                            loadUrl(displayPageUrl)
                         }
                     },
                     modifier = Modifier.weight(1f).fillMaxWidth().testTag("bot_screen_viewer"),
