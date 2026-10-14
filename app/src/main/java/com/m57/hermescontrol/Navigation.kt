@@ -177,6 +177,13 @@ private fun appEntryProvider(
         )
     }
 
+    entry<BotScreenKey> { key ->
+        com.m57.hermescontrol.ui.bots.screen.BotScreenView(
+            profile = key.profile,
+            onBack = { NavigationController.goBack() },
+        )
+    }
+
     // ── Multi-Agent Group Chat Room ─────────────────────────────────────
     entry<GroupChatKey> { key ->
         com.m57.hermescontrol.ui.bots.group.GroupChatScreen(

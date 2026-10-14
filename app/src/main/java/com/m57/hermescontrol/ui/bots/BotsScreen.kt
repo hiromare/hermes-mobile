@@ -69,6 +69,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.m57.hermescontrol.NavigationController
+import com.m57.hermescontrol.BotScreenKey
 import com.m57.hermescontrol.R
 import com.m57.hermescontrol.data.model.ProfileInfo
 import com.m57.hermescontrol.ui.common.BotAvatar
@@ -438,6 +439,9 @@ fun BotsScreen(
                                                 onEditClick = {
                                                     editingBot = profile
                                                 },
+                                                onScreenClick = {
+                                                    NavigationController.navigateTo(BotScreenKey(profile.name))
+                                                },
                                             )
                                         }
                                     }
@@ -558,6 +562,7 @@ private fun BotCard(
     isActiveProfile: Boolean,
     onClick: () -> Unit,
     onEditClick: () -> Unit,
+    onScreenClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val botMeta = profile.botMeta()
@@ -652,6 +657,16 @@ private fun BotCard(
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
+            }
+            IconButton(
+                onClick = onScreenClick,
+                modifier = Modifier.testTag("bot_screen_button_${profile.name}"),
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Visibility,
+                    contentDescription = "Open Bot Screen",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
             IconButton(
                 onClick = onEditClick,

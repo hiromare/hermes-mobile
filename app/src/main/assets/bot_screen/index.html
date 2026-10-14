@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=5,user-scalable=yes" />
+<style>
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#1c1c20;color:#e7e7ee;font:14px system-ui,sans-serif}
+#screen{width:100%;height:100%;overflow:hidden;touch-action:none}
+#message{position:absolute;top:8px;left:8px;padding:5px 9px;border-radius:5px;background:#202026d9;pointer-events:none}
+</style></head><body><div id="screen"></div><div id="message">Waiting for Bot Screen…</div>
+<script>
+// Native may request a connection before the ES module has finished loading.
+window.__hermesPending = { url: null, control: false };
+window.hermesConnectScreen = (url) => { window.__hermesPending.url = url; };
+window.hermesSetControl = (enabled) => { window.__hermesPending.control = !!enabled; };
+window.hermesDisconnectScreen = () => { window.__hermesPending.url = null; window.__hermesPending.control = false; };
+</script>
+<script type="module">
+import RFB from './novnc/core/rfb.js';
+const target = document.getElementById('screen');
+const message = document.getElementById('message');
+let rfb = null;
+let generation = 0;
+function label(value) { message.textContent = value; message.style.display = value ? 'block' : 'none'; }
+window.hermesConnectScreen = (socketUrl) => {
+  if (!/^wss?:\/\//.test(socketUrl)) { label('Invalid display address'); return; }
+  generation++;
+  const current = generation;
+  if (rfb) { try { rfb.disconnect(); } catch (_) {} rfb = null; }
+  label('Connecting…');
+  try {
+    const candidate = new RFB(target, socketUrl, { shared: true });
+    candidate.viewOnly = true; // Never activate controls before a confirmed server lease.
+    candidate.scaleViewport = true;
+    candidate.resizeSession = false;
+    candidate.background = '#1c1c20';
+    candidate.addEventListener('connect', () => { if (generation === current) label(''); });
+    candidate.addEventListener('disconnect', () => { if (generation === current) label('Disconnected — tap Reconnect'); });
+    candidate.addEventListener('securityfailure', () => { if (generation === current) label('Display authentication failed'); });
+    rfb = candidate;
+  } catch (err) { label('Unable to open display'); }
+};
+window.hermesSetControl = (enabled) => { if (rfb) rfb.viewOnly = !enabled; };
+window.hermesDisconnectScreen = () => {
+  generation++;
+  if (rfb) { try { rfb.viewOnly = true; rfb.disconnect(); } catch (_) {} rfb = null; }
+  label('Disconnected');
+};
+if (window.__hermesPending.url) {
+  window.hermesConnectScreen(window.__hermesPending.url);
+  window.hermesSetControl(window.__hermesPending.control);
+}
+</script></body></html>
