@@ -18,6 +18,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -78,7 +80,20 @@ private fun appEntryProvider(
     openDrawer: () -> Unit,
 ) = entryProvider {
     entry<UxPreviewScreenKey> {
-        HermesUxPreviewScreen()
+        HermesUxPreviewScreen(
+            onOpenLiveScreen = { key ->
+                if (AuthManager.hasLocalSession()) {
+                    NavigationController.navigateTo(key)
+                } else {
+                    NavigationController.resetTo(LandingScreen)
+                }
+            },
+            onReturnToLiveApp = {
+                NavigationController.resetTo(
+                    if (AuthManager.hasLocalSession()) ChatScreen else LandingScreen,
+                )
+            },
+        )
         DisableDrawerGestures()
     }
 
@@ -202,7 +217,10 @@ private fun appEntryProvider(
 }
 
 @Composable
-fun MainNavigation(sessionId: String? = null) {
+fun MainNavigation(
+    sessionId: String? = null,
+    uxPreviewRequested: Boolean = false,
+) {
     val token by AuthManager.tokenFlow.collectAsState()
     // Gated dashboards may retain a valid REST cookie after the WS ticket is gone.
     val hasDashboardCredential =
@@ -211,10 +229,11 @@ fun MainNavigation(sessionId: String? = null) {
             gatedMode = AuthManager.isGatedMode(),
             sessionCookie = AuthManager.getSessionCookie(),
         )
-    // Only the isolated .dev debug flavor launches the UX concept. Release and user devices are unchanged.
-    val showUxPreview = BuildConfig.DEBUG && BuildConfig.APPLICATION_ID.endsWith(".dev")
+    // Normal Hermes starts unchanged. The concept requires an explicit debug-only
+    // launch extra or a manual selection from the authenticated app drawer.
+    val previewAvailable = BuildConfig.DEBUG && BuildConfig.APPLICATION_ID.endsWith(".dev")
     val startScreen: NavKey =
-        if (showUxPreview) {
+        if (previewAvailable && uxPreviewRequested) {
             UxPreviewScreenKey
         } else if (hasDashboardCredential) {
             ChatScreen
@@ -330,6 +349,21 @@ fun MainNavigation(sessionId: String? = null) {
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+                    // This independent opt-in entry does not replace any original
+                    // drawer destination or change live navigation defaults.
+                    if (previewAvailable && hasDashboardCredential) {
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                        NavigationDrawerItem(
+                            icon = { Icon(Icons.Filled.Apps, contentDescription = null) },
+                            label = { Text("UXプレビュー（デモ）") },
+                            selected = currentScreen == UxPreviewScreenKey,
+                            onClick = {
+                                scope.launch { drawerState.close() }
+                                NavigationController.navigateTo(UxPreviewScreenKey)
+                            },
+                        )
+                    }
 
                     for (section in DrawerSection.entries) {
                         Text(

@@ -17,7 +17,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
@@ -58,9 +60,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.navigation3.runtime.NavKey
+import com.m57.hermescontrol.ScreenRegistry
 
 /**
  * An isolated, local-data-only UX mock. This activity NEVER submits real prompts,
@@ -105,7 +110,10 @@ private val demoTasks =
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HermesUxPreviewScreen() {
+fun HermesUxPreviewScreen(
+    onOpenLiveScreen: (NavKey) -> Unit,
+    onReturnToLiveApp: () -> Unit,
+) {
     var section by rememberSaveable { mutableStateOf("chat") }
     var sheet by rememberSaveable { mutableStateOf("") }
     var conversations by remember { mutableStateOf(initialConversations) }
@@ -525,7 +533,9 @@ fun HermesUxPreviewScreen() {
             featureInfo = ""
         }) {
             Column(
-                Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                Modifier
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 when (sheet) {
@@ -542,7 +552,11 @@ fun HermesUxPreviewScreen() {
                         SheetEntry("エージェント・チーム", "Profiles / Group Chat / 役割と能力") {
                             sheet = "agents"
                         }
-                        SheetEntry("全機能", "Cron / MCP / Projects / 設定など") {
+                        SheetEntry("本来のHermesへ戻る", "既存のチャットと全機能を開く") {
+                            sheet = ""
+                            onReturnToLiveApp()
+                        }
+                        SheetEntry("既存の全機能", "元の機能を一つも隠さず直接開く") {
                             sheet = "features"
                         }
                     }
@@ -607,33 +621,24 @@ fun HermesUxPreviewScreen() {
                     }
 
                     "features" -> {
-                        Text("すべての機能", style = MaterialTheme.typography.titleLarge)
+                        Text("Hermesの既存機能", style = MaterialTheme.typography.titleLarge)
                         Text(
-                            "通常のHermesの管理機能をなくさない設計です。",
+                            "ここからはデモではなく、従来の実際のHermes画面に移動します。",
                             style = MaterialTheme.typography.bodySmall,
                         )
-                        listOf(
-                            "Bots / Profiles",
-                            "Group Chat / Teams",
-                            "Kanban / Swarm",
-                            "Cron / Routines",
-                            "Skills / MCP",
-                            "Projects / Files",
-                            "Bot Screen",
-                            "Logs / Analytics",
-                            "Settings / Security",
-                        ).forEach { feature ->
-                            SheetEntry(feature, "") {
-                                if (feature.startsWith("Kanban")) {
-                                    board = true
-                                    openSection("work")
-                                } else {
-                                    featureInfo = "$feature：実際の機能への接続は未実装のプレビューです。"
-                                }
-                            }
+                        SheetEntry("本来のHermesを開く", "元のチャットと機能一覧へ戻る") {
+                            sheet = ""
+                            onReturnToLiveApp()
                         }
-                        if (featureInfo.isNotEmpty()) {
-                            Text(featureInfo, style = MaterialTheme.typography.bodySmall)
+                        HorizontalDivider()
+                        ScreenRegistry.ALL_SCREENS.forEach { screen ->
+                            SheetEntry(
+                                stringResource(screen.labelRes),
+                                "既存の機能を開く",
+                            ) {
+                                sheet = ""
+                                onOpenLiveScreen(screen.key)
+                            }
                         }
                     }
                 }

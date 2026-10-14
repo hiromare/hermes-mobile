@@ -112,7 +112,12 @@ class MainActivity : ComponentActivity() {
                                 }
                                 LoadingState()
                             } else {
-                                MainNavigation()
+                                MainNavigation(
+                                    uxPreviewRequested =
+                                        BuildConfig.DEBUG &&
+                                            BuildConfig.APPLICATION_ID.endsWith(".dev") &&
+                                            intent.getBooleanExtra("hermes_ux_preview", false),
+                                )
                             }
                         }
 
