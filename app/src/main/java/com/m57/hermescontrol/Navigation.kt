@@ -53,6 +53,8 @@ import com.m57.hermescontrol.data.local.AuthManager
 import com.m57.hermescontrol.data.ws.ConnectionStatus
 import com.m57.hermescontrol.data.ws.HermesWsClient
 import com.m57.hermescontrol.theme.LocalHermesStatusColors
+import com.m57.hermescontrol.ui.bots.screen.BotScreenDockState
+import com.m57.hermescontrol.ui.bots.screen.BotScreenFloatingOverlay
 import com.m57.hermescontrol.ui.common.DisableDrawerGestures
 import com.m57.hermescontrol.ui.common.DrawerGestureController
 import com.m57.hermescontrol.ui.common.LocalDrawerGestureController
@@ -227,6 +229,10 @@ fun MainNavigation(sessionId: String? = null) {
     }
 
     val currentScreen = backStack.lastOrNull() ?: startScreen
+    // A signed-out session must not retain a floating desktop from a previous account.
+    LaunchedEffect(hasDashboardCredential) {
+        if (!hasDashboardCredential) BotScreenDockState.close()
+    }
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
@@ -369,17 +375,26 @@ fun MainNavigation(sessionId: String? = null) {
             Scaffold(
                 contentWindowInsets = WindowInsets.navigationBars,
             ) { paddingValues ->
-                NavDisplay(
-                    backStack = backStack,
-                    onBack = { NavigationController.goBack() },
-                    entryProvider =
-                        appEntryProvider(sessionId, openDrawer),
+                Box(
                     modifier =
                         Modifier
                             .padding(paddingValues)
                             .consumeWindowInsets(paddingValues)
                             .fillMaxSize(),
-                )
+                ) {
+                    NavDisplay(
+                        backStack = backStack,
+                        onBack = { NavigationController.goBack() },
+                        entryProvider = appEntryProvider(sessionId, openDrawer),
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                    // Outside NavDisplay: one live viewer, stable across in-app navigation.
+                    if (hasDashboardCredential) {
+                        BotScreenDockState.profile?.let { bot ->
+                            BotScreenFloatingOverlay(profile = bot)
+                        }
+                    }
+                }
             }
         }
     }

@@ -95,7 +95,6 @@ import com.m57.hermescontrol.data.ws.ConnectionStatus
 import com.m57.hermescontrol.data.ws.HermesWsClient
 import com.m57.hermescontrol.notification.NotificationHelper
 import com.m57.hermescontrol.theme.LocalHermesStatusColors
-import com.m57.hermescontrol.ui.bots.screen.BotScreenDock
 import com.m57.hermescontrol.ui.bots.screen.BotScreenDockState
 import com.m57.hermescontrol.ui.chat.components.ChatAppUpdateSection
 import com.m57.hermescontrol.ui.chat.components.ChatConnectionBanner
@@ -837,10 +836,6 @@ fun ChatScreen(
                         scrollController.jumpToBottom()
                     },
                 )
-            }
-
-            if (showBotScreenDock && !timelineState.isHistorical) {
-                BotScreenDock(profile = currentBotProfile)
             }
 
             Box(
