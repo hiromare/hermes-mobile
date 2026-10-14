@@ -2,8 +2,8 @@
 <html lang="en"><head><meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=5,user-scalable=yes" />
 <style>
-html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#1c1c20;color:#e7e7ee;font:14px system-ui,sans-serif}
-#screen{width:100%;height:100%;overflow:hidden;touch-action:none}
+html,body{margin:0;width:100%;height:100vh;overflow:hidden;background:#1c1c20;color:#e7e7ee;font:14px system-ui,sans-serif}
+#screen{position:fixed;inset:0;width:100vw;height:100vh;overflow:hidden;touch-action:none}
 #message{position:absolute;top:8px;left:8px;padding:5px 9px;border-radius:5px;background:#202026d9;pointer-events:none}
 </style></head><body><div id="screen"></div><div id="message">Waiting for Bot Screen…</div>
 <script>
@@ -17,6 +17,21 @@ window.hermesDisconnectScreen = () => { window.__hermesPending.url = null; windo
 import RFB from './novnc/core/rfb.js';
 const target = document.getElementById('screen');
 const message = document.getElementById('message');
+// Some Android WebViews resolve 100vh/100% to zero if their first layout
+// occurred while the native Compose host still had height 0. Force an
+// explicit pixel-sized viewport after the host has measured itself.
+function fitViewerToViewport() {
+  const height = Math.max(window.innerHeight || 0, document.documentElement.clientHeight || 0);
+  const width = Math.max(window.innerWidth || 0, document.documentElement.clientWidth || 0);
+  if (height > 0) {
+    document.body.style.height = `${height}px`;
+    target.style.height = `${height}px`;
+  }
+  if (width > 0) target.style.width = `${width}px`;
+}
+window.addEventListener('resize', fitViewerToViewport);
+window.visualViewport?.addEventListener('resize', fitViewerToViewport);
+fitViewerToViewport();
 let rfb = null;
 let generation = 0;
 function label(value) { message.textContent = value; message.style.display = value ? 'block' : 'none'; }
@@ -32,7 +47,9 @@ window.hermesConnectScreen = (socketUrl) => {
     candidate.scaleViewport = true;
     candidate.resizeSession = false;
     candidate.background = '#1c1c20';
-    candidate.addEventListener('connect', () => { if (generation === current) label(''); });
+    candidate.addEventListener('connect', () => { if (generation === current) { fitViewerToViewport(); label(''); } });
+    // Android WebView may finish native sizing after the RFB handshake.
+    window.setTimeout(() => { if (generation === current) fitViewerToViewport(); }, 1000);
     candidate.addEventListener('disconnect', () => { if (generation === current) label('Disconnected — tap Reconnect'); });
     candidate.addEventListener('securityfailure', () => { if (generation === current) label('Display authentication failed'); });
     rfb = candidate;

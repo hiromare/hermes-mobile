@@ -302,6 +302,7 @@ fun BotScreenView(
                         WebView(context).apply {
                             setBackgroundColor(Color.rgb(28, 28, 32))
                             settings.javaScriptEnabled = true
+                            settings.cacheMode = android.webkit.WebSettings.LOAD_NO_CACHE
                             settings.domStorageEnabled = false
                             settings.allowFileAccess = false
                             settings.allowContentAccess = false
