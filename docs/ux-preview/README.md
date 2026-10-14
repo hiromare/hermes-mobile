@@ -1,23 +1,45 @@
-# Hermes Mobile — bottom navigation UX preview (2026-10-15)
+# Hermes Mobile — conversation-first UX preview (2026-10-15 revision)
 
-This is an isolated **Japanese UX concept**, built from the Japanese localization feature branch. It does not submit prompts, approvals, tasks, or backend mutations.
+**User feedback addressed:** original demo wasted chat viewport height and confused conversation/session, mode, attention and long-running work. The new demo separates those information objects before arranging UI.
 
-- Runs **only in the `com.m57.hermescontrol.dev` debug APK** (temporary preview build). Normal release builds retain existing navigation.
-- The primary navigation is at the **bottom**: Home / Work / Conversations.
-- **Conversation target** is at the top of Chat: Automatic / One-on-one / Team / All. The message composer is at the bottom, and the navigation bar hides with the keyboard.
-- Work has both a list and a Kanban presentation. The full-features menu is accessible from the top bar.
-- Home/Work data and conversation messages are **illustrative fiction**, not real Hermes task/session/progress data.
-- Bot routing, Group Chat, real Kanban task linkage, Inbox actions, session persistence, and full-features deep links require later integration. The demo **does not** pretend to execute any of them.
-- Existing app screens, session APIs, and permissions are not modified. The unsynced session-picker branch remains untouched. No Flip7 install, production Hermes operation, or Proxmox access.
+## Information architecture
 
-## Emulator screenshots
+| Entity | One source of truth | Where a user interacts |
+| --- | --- | --- |
+| **Conversation / Session** | Owns transcript, participants, mode, draft, related work | Full-height Conversation screen; title opens conversation picker |
+| **Conversation mode** | Property of each conversation (auto, one-to-one, team, all), not a global switch | New conversation flow; current title reflects selected conversation |
+| **Kanban Task** | Durable `task_id` owns actual work, worker state, verification, artifacts, handoff | Work list, Kanban board, task detail |
+| **Inbox item** | Derived from work/activity requiring human attention, not a second Kanban | Inbox only for approval, important suggestions, announcements |
+| **Agent / Group / Routine / Settings** | Capability and operations; not top-level daily destinations | Navigation / full-features / agents catalog |
 
-| Conversation | All-agents | Home | Work | Kanban |
-| --- | --- | --- | --- | --- |
-| ![chat](chat-auto.png) | ![all](chat-all.png) | ![home](home.png) | ![work](work-list.png) | ![kanban](work-kanban.png) |
+From conversation, contextual task links open the durable work item. From Inbox, an action opens the corresponding work detail. From a task detail, a related conversation can be opened. Real linkage is a **future integration**, not implemented by this demo.
 
-## Verification
+## Space allocation
+
+- **Conversation:** a single top app-bar row with the active conversation name, an expandable transcript, then the composer. No persistent bottom tabs, session list row, participant chips, or mode button row. Navigation is accessible from the left icon; title opens conversation picker and top-right plus starts a new conversation.
+- **Inbox and Work:** bottom tabs appear because these are not transcript-dense screens. Inbox lists attention-demanding items, not every running task; Work lists all durable tasks and offers a horizontally scrollable Kanban board.
+- Conversation audience selection happens when **creating a conversation**, preventing mode changes from silently mixing a 1:1 chat and Group messages within the same session.
+- The preview is launched **only in debug `com.m57.hermescontrol.dev`**. No feature is merged into the app's production UI. No real AI, task, approval, identity or credential is accessed.
+
+## Screenshots (revised on Mac Android emulator)
+
+| Full-height Chat | All-member Chat | Session picker | Navigation |
+| --- | --- | --- | --- |
+| ![chat](chat-revised.png) | ![all](chat-all-revised.png) | ![sessions](conversations-revised.png) | ![navigation](navigation-revised.png) |
+
+| Inbox | Work | Kanban | Create conversation |
+| --- | --- | --- | --- |
+| ![inbox](inbox-revised.png) | ![work](work-revised.png) | ![kanban](kanban-revised.png) | ![new](new-conversation-revised.png) |
+
+Older initial mock files (chat-auto.png etc) are retained for before/after comparison.
+
+## Validation
 
 - Gradle `:app:assembleDebug :app:ktlintCheck`: PASS.
-- Mac Android emulator `emulator-5554`, Japanese locale `ja-JP`: PASS.
-- UI automation text checks: Home / Work / Chat tabs visible, auto/solo/team/all mode choices visible, tap All shows three named Bots, Work shows a list, Kanban toggle operates, Home shows mock Inbox cards.
+- Android emulator `emulator-5554` with `ja-JP`: PASS.
+- Actual UI tests: chat has **no persistent navigation or mode row**; title opens session picker; choosing all-member room shows 3 bot replies; navigation -> Inbox -> Work -> Kanban -> Chat keeps the conversation; new conversation asks for audience and creates a separate session.
+- All examples and conversation responses are sample data, **not live Hermes**.
+
+## Known gaps
+
+Real Inbox aggregation, persistent multi-mode room model, task-session linkage, actual bot profile selection, capability discovery, account/role permissions, real progress, and background task execution are not yet connected. The entire preview is segregated in an independent worktree and does not touch the unsynced session-switcher prototype, production AgentHub, Proxmox, or Flip7.
