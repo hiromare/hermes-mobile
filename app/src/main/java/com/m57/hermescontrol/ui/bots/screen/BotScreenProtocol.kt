@@ -40,9 +40,11 @@ internal object BotScreenProtocol {
             supported = data.bool("supported"),
             installed = data.bool("installed"),
             running = data.bool("running"),
-            missing = (data["missing"] as? kotlinx.serialization.json.JsonArray)?.mapNotNull {
-                (it as? JsonPrimitive)?.contentOrNull
-            }.orEmpty(),
+            missing =
+                (data["missing"] as? kotlinx.serialization.json.JsonArray)
+                    ?.mapNotNull {
+                        (it as? JsonPrimitive)?.contentOrNull
+                    }.orEmpty(),
             blocker = data.string("blocker"),
             installCommand = data.string("install_command"),
             lease = parseLease(data["lease"]),
@@ -66,15 +68,20 @@ internal object BotScreenProtocol {
     }
 
     /** Ticket is single-use, tied to the configured dashboard origin and never sent to any other host. */
-    fun displaySocketUrl(endpoint: ServerEndpoint, observation: Observation): String =
-        endpoint.webSocketUrl(
-            path = observation.path.removePrefix("/"),
-            authParameter = "ticket",
-            credential = observation.ticket,
-        ).replace("?ticket=", "?display_ticket=")
+    fun displaySocketUrl(
+        endpoint: ServerEndpoint,
+        observation: Observation,
+    ): String =
+        endpoint
+            .webSocketUrl(
+                path = observation.path.removePrefix("/"),
+                authParameter = "ticket",
+                credential = observation.ticket,
+            ).replace("?ticket=", "?display_ticket=")
 
     fun viewerHash(viewerId: String): String =
-        MessageDigest.getInstance("SHA-256")
+        MessageDigest
+            .getInstance("SHA-256")
             .digest(viewerId.toByteArray(Charsets.UTF_8))
             .take(6)
             .joinToString("") { "%02x".format(it.toInt() and 0xff) }

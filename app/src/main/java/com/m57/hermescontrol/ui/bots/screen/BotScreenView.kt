@@ -78,11 +78,23 @@ fun BotScreenView(
     var viewerReady by remember(profile) { mutableStateOf(false) }
     var initialObserveAttempted by remember(profile) { mutableStateOf(false) }
 
-    suspend fun rpc(method: String, params: Map<String, Any> = emptyMap()): Any? =
-        HermesWsClient.request(method, params + ("profile" to profile), timeoutMs = 30_000L, suppressErrorEvent = true).await()
+    suspend fun rpc(
+        method: String,
+        params: Map<String, Any> = emptyMap(),
+    ): Any? =
+        HermesWsClient
+            .request(
+                method,
+                params + ("profile" to profile),
+                timeoutMs = 30_000L,
+                suppressErrorEvent = true,
+            ).await()
 
     fun setControl(enabled: Boolean) {
-        webView?.takeIf { viewerReady }?.evaluateJavascript("window.hermesSetControl(${if (enabled) "true" else "false"})", null)
+        webView
+            ?.takeIf {
+                viewerReady
+            }?.evaluateJavascript("window.hermesSetControl(${if (enabled) "true" else "false"})", null)
     }
 
     suspend fun refreshStatus() {
@@ -177,23 +189,60 @@ fun BotScreenView(
         ) {
             val current = status
             when {
-                current == null -> CircularProgressIndicator(modifier = Modifier.testTag("bot_screen_loading"))
-                !current.supported -> Text("Bot Screen is not available on this host")
-                !current.installed -> Text("Bot Screen needs host packages: ${current.installCommand ?: current.missing.joinToString()}")
-                !current.running -> Text("Bot Screen is stopped${current.blocker?.let { ": $it" } ?: ""}")
-                ownsControl -> Text("You control this Bot Screen", color = MaterialTheme.colorScheme.primary)
-                current.lease.holder == "human" -> Text("Another viewer controls this Bot Screen")
-                else -> Text("Watching Bot Screen · read-only")
+                current == null -> {
+                    CircularProgressIndicator(modifier = Modifier.testTag("bot_screen_loading"))
+                }
+
+                !current.supported -> {
+                    Text("Bot Screen is not available on this host")
+                }
+
+                !current.installed -> {
+                    Text(
+                        "Bot Screen needs host packages: ${current.installCommand ?: current.missing.joinToString()}",
+                    )
+                }
+
+                !current.running -> {
+                    Text("Bot Screen is stopped${current.blocker?.let { ": $it" } ?: ""}")
+                }
+
+                ownsControl -> {
+                    Text("You control this Bot Screen", color = MaterialTheme.colorScheme.primary)
+                }
+
+                current.lease.holder == "human" -> {
+                    Text("Another viewer controls this Bot Screen")
+                }
+
+                else -> {
+                    Text("Watching Bot Screen · read-only")
+                }
             }
-            if (error != null) Text(error.orEmpty(), color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("bot_screen_error"))
+            if (error != null) {
+                Text(
+                    error.orEmpty(),
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.testTag("bot_screen_error"),
+                )
+            }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (current?.installed == true && current.supported && !current.running) {
-                    Button(onClick = { act { status = BotScreenProtocol.parseStatus(rpc("display.start")); observe() } }, enabled = !busy) {
+                    Button(onClick = {
+                        act {
+                            status = BotScreenProtocol.parseStatus(rpc("display.start"))
+                            observe()
+                        }
+                    }, enabled = !busy) {
                         Text("Start screen")
                     }
                 }
                 if (current?.running == true) {
-                    OutlinedButton(onClick = { act { observe() } }, enabled = !busy, modifier = Modifier.testTag("bot_screen_reconnect")) {
+                    OutlinedButton(
+                        onClick = { act { observe() } },
+                        enabled = !busy,
+                        modifier = Modifier.testTag("bot_screen_reconnect"),
+                    ) {
                         Text(if (socketUrl == null) "Watch" else "Reconnect")
                     }
                     if (!ownsControl) {
@@ -202,9 +251,13 @@ fun BotScreenView(
                                 act {
                                     if (socketUrl == null) observe()
                                     val id = viewerId ?: kotlin.error("No viewer ID")
-                                    val lease = BotScreenProtocol.parseLease(
-                                        rpc("display.lease.acquire", mapOf("viewer_id" to id)).toJsonObject()["lease"],
-                                    )
+                                    val lease =
+                                        BotScreenProtocol.parseLease(
+                                            rpc(
+                                                "display.lease.acquire",
+                                                mapOf("viewer_id" to id),
+                                            ).toJsonObject()["lease"],
+                                        )
                                     ownsControl = lease.heldBy(id)
                                     setControl(ownsControl)
                                     refreshStatus()
@@ -245,26 +298,47 @@ fun BotScreenView(
                             settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW
                             webViewClient =
                                 object : WebViewClient() {
-                                    override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
+                                    override fun shouldInterceptRequest(
+                                        view: WebView?,
+                                        request: WebResourceRequest?,
+                                    ): WebResourceResponse? {
                                         val path = request?.url?.let(BotScreenAssets::localAssetPath) ?: return null
-                                        val mime = when {
-                                            path.endsWith(".html") -> "text/html"
-                                            path.endsWith(".js") -> "text/javascript"
-                                            path.endsWith(".css") -> "text/css"
-                                            else -> "application/octet-stream"
-                                        }
+                                        val mime =
+                                            when {
+                                                path.endsWith(".html") -> "text/html"
+                                                path.endsWith(".js") -> "text/javascript"
+                                                path.endsWith(".css") -> "text/css"
+                                                else -> "application/octet-stream"
+                                            }
                                         return try {
                                             WebResourceResponse(mime, "UTF-8", context.assets.open(path))
                                         } catch (_: Exception) {
-                                            WebResourceResponse("text/plain", "UTF-8", 404, "Not Found", emptyMap(), ByteArrayInputStream(ByteArray(0)))
+                                            WebResourceResponse(
+                                                "text/plain",
+                                                "UTF-8",
+                                                404,
+                                                "Not Found",
+                                                emptyMap(),
+                                                ByteArrayInputStream(ByteArray(0)),
+                                            )
                                         }
                                     }
 
-                                    override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean =
+                                    override fun shouldOverrideUrlLoading(
+                                        view: WebView?,
+                                        request: WebResourceRequest?,
+                                    ): Boolean =
                                         request?.url?.toString() != "$SCREEN_ASSET_ORIGIN${SCREEN_ASSET_PATH}index.html"
 
-                                    override fun onPageFinished(view: WebView?, url: String?) {
-                                        if (url == "$SCREEN_ASSET_ORIGIN${SCREEN_ASSET_PATH}index.html") viewerReady = true
+                                    override fun onPageFinished(
+                                        view: WebView?,
+                                        url: String?,
+                                    ) {
+                                        if (url ==
+                                            "$SCREEN_ASSET_ORIGIN${SCREEN_ASSET_PATH}index.html"
+                                        ) {
+                                            viewerReady = true
+                                        }
                                     }
                                 }
                             webView = this
