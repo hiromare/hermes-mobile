@@ -664,7 +664,7 @@ private fun BotCard(
             ) {
                 Icon(
                     imageVector = Icons.Filled.Visibility,
-                    contentDescription = "Open Bot Screen",
+                    contentDescription = stringResource(R.string.bot_screen_open),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
