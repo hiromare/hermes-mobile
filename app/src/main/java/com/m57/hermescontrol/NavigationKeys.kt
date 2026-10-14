@@ -3,6 +3,9 @@ package com.m57.hermescontrol
 import androidx.navigation3.runtime.NavKey
 import kotlinx.serialization.Serializable
 
+/** Isolated, local-data-only UX demo for the .dev debug APK. */
+@Serializable data object UxPreviewScreenKey : NavKey
+
 @Serializable data object LandingScreen : NavKey
 
 @Serializable data object AuthLoginScreen : NavKey

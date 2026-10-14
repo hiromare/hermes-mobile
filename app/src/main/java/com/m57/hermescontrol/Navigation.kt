@@ -67,6 +67,7 @@ import com.m57.hermescontrol.ui.settings.SettingsLanguagePage
 import com.m57.hermescontrol.ui.settings.SettingsVaultPage
 import com.m57.hermescontrol.ui.settings.SettingsViewModel
 import com.m57.hermescontrol.ui.toolsets.ToolsetDetailScreen
+import com.m57.hermescontrol.ui.uxpreview.HermesUxPreviewScreen
 import kotlinx.coroutines.launch
 import com.m57.hermescontrol.ui.authlogin.AuthLoginScreen as AuthLoginScreenContent
 import com.m57.hermescontrol.ui.connectors.AccountConnectorsScreen as AccountConnectorsScreenContent
@@ -76,6 +77,11 @@ private fun appEntryProvider(
     sessionId: String?,
     openDrawer: () -> Unit,
 ) = entryProvider {
+    entry<UxPreviewScreenKey> {
+        HermesUxPreviewScreen()
+        DisableDrawerGestures()
+    }
+
     entry<LandingScreen> {
         // B7 (Jun 30 2026, kanban t_424): route landing screen buttons through navigateTo to prevent duplicate screens
         LandingScreenContent(
@@ -205,7 +211,16 @@ fun MainNavigation(sessionId: String? = null) {
             gatedMode = AuthManager.isGatedMode(),
             sessionCookie = AuthManager.getSessionCookie(),
         )
-    val startScreen: NavKey = if (hasDashboardCredential) ChatScreen else LandingScreen
+    // Only the isolated .dev debug flavor launches the UX concept. Release and user devices are unchanged.
+    val showUxPreview = BuildConfig.DEBUG && BuildConfig.APPLICATION_ID.endsWith(".dev")
+    val startScreen: NavKey =
+        if (showUxPreview) {
+            UxPreviewScreenKey
+        } else if (hasDashboardCredential) {
+            ChatScreen
+        } else {
+            LandingScreen
+        }
 
     val backStack = remember(startScreen) { NavBackStack(startScreen) }
     NavigationController.backStack = backStack
