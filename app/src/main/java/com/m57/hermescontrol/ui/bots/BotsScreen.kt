@@ -68,10 +68,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.m57.hermescontrol.BotScreenKey
+import com.m57.hermescontrol.ChatScreen
 import com.m57.hermescontrol.NavigationController
 import com.m57.hermescontrol.R
+import com.m57.hermescontrol.data.local.AuthManager
 import com.m57.hermescontrol.data.model.ProfileInfo
+import com.m57.hermescontrol.ui.bots.screen.BotScreenDockState
 import com.m57.hermescontrol.ui.common.BotAvatar
 import com.m57.hermescontrol.ui.common.EmptyState
 import com.m57.hermescontrol.ui.common.ErrorState
@@ -440,7 +442,11 @@ fun BotsScreen(
                                                     editingBot = profile
                                                 },
                                                 onScreenClick = {
-                                                    NavigationController.navigateTo(BotScreenKey(profile.name))
+                                                    // The bot and the chat must share a profile: a screen-only RPC
+                                                    // must never be paired with an unrelated session.
+                                                    AuthManager.setActiveProfileId(profile.name)
+                                                    BotScreenDockState.show(profile.name)
+                                                    NavigationController.navigateTo(ChatScreen)
                                                 },
                                             )
                                         }

@@ -1913,4 +1913,19 @@
     <string name="trust_user_cas_save_failed">Could not save the trust setting. Please try again.</string>
     <string name="trust_user_cas_restart_required">Restart the app process to apply this change.</string>
     <string name="bot_screen_open">Open Bot Screen</string>
+    <string name="bot_screen_toggle">Show or hide Bot Screen</string>
+    <string name="bot_screen_live_label">Bot Screen · live</string>
+    <string name="bot_screen_smaller">Make Bot Screen smaller</string>
+    <string name="bot_screen_larger">Make Bot Screen larger</string>
+    <string name="bot_screen_close">Close Bot Screen</string>
+    <string name="bot_screen_controls">Screen controls</string>
+    <string name="bot_screen_connecting">Connecting…</string>
+    <string name="bot_screen_stopped">Screen stopped</string>
+    <string name="bot_screen_controlling">You control</string>
+    <string name="bot_screen_in_use">View only · in use</string>
+    <string name="bot_screen_read_only">Live · view only</string>
+    <string name="bot_screen_start">Start screen</string>
+    <string name="bot_screen_reconnect">Reconnect</string>
+    <string name="bot_screen_take_over">Take over</string>
+    <string name="bot_screen_hand_back">Hand back</string>
 </resources>

@@ -33,6 +33,7 @@ import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Computer
 import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.MoreVert
@@ -94,6 +95,8 @@ import com.m57.hermescontrol.data.ws.ConnectionStatus
 import com.m57.hermescontrol.data.ws.HermesWsClient
 import com.m57.hermescontrol.notification.NotificationHelper
 import com.m57.hermescontrol.theme.LocalHermesStatusColors
+import com.m57.hermescontrol.ui.bots.screen.BotScreenDock
+import com.m57.hermescontrol.ui.bots.screen.BotScreenDockState
 import com.m57.hermescontrol.ui.chat.components.ChatAppUpdateSection
 import com.m57.hermescontrol.ui.chat.components.ChatConnectionBanner
 import com.m57.hermescontrol.ui.chat.components.ChatHistoryWindowBanner
@@ -191,6 +194,9 @@ fun ChatScreen(
     // read its fields recompose on search changes (bar, matched bubbles).
     val searchState = viewModel.searchState
     val displayedMessages = transcriptState.messages
+    val activeBotProfile by AuthManager.activeProfileId.collectAsStateWithLifecycle()
+    val currentBotProfile = activeBotProfile?.takeIf { it.isNotBlank() } ?: "default"
+    val showBotScreenDock = BotScreenDockState.visibleFor(currentBotProfile)
     val lifecycleOwner = LocalLifecycleOwner.current
     val context = LocalContext.current
 
@@ -546,6 +552,120 @@ fun ChatScreen(
             }
         },
         actions = {
+            // Keep the screen's controls in the existing Chat toolbar: no second header,
+            // and absolutely nothing overlays the remote desktop framebuffer.
+            var showBotScreenMenu by remember { mutableStateOf(false) }
+            Box {
+                IconButton(
+                    onClick = { showBotScreenMenu = true },
+                    modifier = Modifier.testTag("chat_bot_screen_toggle"),
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Computer,
+                        contentDescription = stringResource(R.string.bot_screen_controls),
+                        tint =
+                            if (showBotScreenDock) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                    )
+                }
+                DropdownMenu(
+                    expanded = showBotScreenMenu,
+                    onDismissRequest = { showBotScreenMenu = false },
+                ) {
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                stringResource(
+                                    if (showBotScreenDock) R.string.bot_screen_close else R.string.bot_screen_open,
+                                ),
+                            )
+                        },
+                        onClick = {
+                            showBotScreenMenu = false
+                            if (showBotScreenDock) {
+                                BotScreenDockState.close()
+                            } else {
+                                BotScreenDockState.show(
+                                    currentBotProfile,
+                                )
+                            }
+                        },
+                        modifier = Modifier.testTag("chat_bot_screen_visibility"),
+                    )
+                    if (showBotScreenDock && !timelineState.isHistorical) {
+                        val controls = BotScreenDockState.controls
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    stringResource(
+                                        if (controls?.running ==
+                                            true
+                                        ) {
+                                            R.string.bot_screen_reconnect
+                                        } else {
+                                            R.string.bot_screen_start
+                                        },
+                                    ),
+                                )
+                            },
+                            enabled = controls != null && !controls.busy && !controls.loading,
+                            onClick = {
+                                showBotScreenMenu = false
+                                if (controls?.running ==
+                                    true
+                                ) {
+                                    BotScreenDockState.reconnect()
+                                } else {
+                                    BotScreenDockState.start()
+                                }
+                            },
+                            modifier = Modifier.testTag("chat_bot_screen_reconnect"),
+                        )
+                        if (controls?.running == true) {
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        stringResource(
+                                            if (controls.ownsControl) {
+                                                R.string.bot_screen_hand_back
+                                            } else {
+                                                R.string.bot_screen_take_over
+                                            },
+                                        ),
+                                    )
+                                },
+                                enabled = !controls.busy,
+                                onClick = {
+                                    showBotScreenMenu = false
+                                    BotScreenDockState.toggleControl()
+                                },
+                                modifier = Modifier.testTag("chat_bot_screen_control"),
+                            )
+                        }
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    stringResource(
+                                        if (BotScreenDockState.expanded) {
+                                            R.string.bot_screen_smaller
+                                        } else {
+                                            R.string.bot_screen_larger
+                                        },
+                                    ),
+                                )
+                            },
+                            onClick = {
+                                showBotScreenMenu = false
+                                BotScreenDockState.toggleExpanded()
+                            },
+                            modifier = Modifier.testTag("chat_bot_screen_resize"),
+                        )
+                    }
+                }
+            }
             IconButton(onClick = { viewModel.createNewSession() }) {
                 Icon(
                     imageVector = Icons.Filled.Add,
@@ -717,6 +837,10 @@ fun ChatScreen(
                         scrollController.jumpToBottom()
                     },
                 )
+            }
+
+            if (showBotScreenDock && !timelineState.isHistorical) {
+                BotScreenDock(profile = currentBotProfile)
             }
 
             Box(

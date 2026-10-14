@@ -6,16 +6,14 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -25,6 +23,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
@@ -69,11 +68,29 @@ internal object BotScreenAssets {
     }
 }
 
-@SuppressLint("SetJavaScriptEnabled")
 @Composable
 fun BotScreenView(
     profile: String,
     onBack: () -> Unit,
+) {
+    HermesScaffold(
+        title = { Text("Bot Screen · $profile") },
+        navigationIcon = NavIcon.Back(onBack),
+        drawerGesturesEnabled = false,
+    ) { padding ->
+        BotScreenPanel(profile, Modifier.fillMaxSize().padding(padding))
+    }
+}
+
+/** Inline viewer; can be docked above the real ChatScreen transcript and composer. */
+@SuppressLint("SetJavaScriptEnabled")
+@Composable
+fun BotScreenPanel(
+    profile: String,
+    modifier: Modifier = Modifier,
+    header: @Composable (String, BotScreenControls) -> Unit = { name, controls ->
+        BotScreenHeader(profile = name, controls = controls)
+    },
 ) {
     val context = LocalContext.current
     val displayEndpoint = remember(profile) { AuthManager.endpointForBuild() }
@@ -189,113 +206,53 @@ fun BotScreenView(
         setControl(ownsControl)
     }
 
-    HermesScaffold(
-        title = { Text("Bot Screen · $profile") },
-        navigationIcon = NavIcon.Back(onBack),
-        drawerGesturesEnabled = false,
-    ) { padding ->
-        Column(
-            modifier = Modifier.fillMaxSize().padding(padding).padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            val current = status
-            when {
-                current == null -> {
-                    CircularProgressIndicator(modifier = Modifier.testTag("bot_screen_loading"))
+    val current = status
+    val controls =
+        BotScreenControls(
+            running = current?.running == true,
+            loading = current == null,
+            busy = busy,
+            ownsControl = ownsControl,
+            viewerOccupied = current?.lease?.holder == "human" && !ownsControl,
+            error = error,
+            unavailable =
+                when {
+                    current == null -> null
+                    !current.supported -> "Bot Screen unavailable"
+                    !current.installed -> current.installCommand ?: current.missing.joinToString()
+                    !current.running -> current.blocker ?: "Bot Screen stopped"
+                    else -> null
+                },
+            onReconnect = { act { observe() } },
+            onStart = {
+                act {
+                    status = BotScreenProtocol.parseStatus(rpc("display.start"))
+                    observe()
                 }
-
-                !current.supported -> {
-                    Text("Bot Screen is not available on this host")
-                }
-
-                !current.installed -> {
-                    Text(
-                        "Bot Screen needs host packages: ${current.installCommand ?: current.missing.joinToString()}",
-                    )
-                }
-
-                !current.running -> {
-                    Text("Bot Screen is stopped${current.blocker?.let { ": $it" } ?: ""}")
-                }
-
-                ownsControl -> {
-                    Text("You control this Bot Screen", color = MaterialTheme.colorScheme.primary)
-                }
-
-                current.lease.holder == "human" -> {
-                    Text("Another viewer controls this Bot Screen")
-                }
-
-                else -> {
-                    Text("Watching Bot Screen · read-only")
-                }
-            }
-            if (error != null) {
-                Text(
-                    error.orEmpty(),
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.testTag("bot_screen_error"),
-                )
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (current?.installed == true && current.supported && !current.running) {
-                    Button(onClick = {
-                        act {
-                            status = BotScreenProtocol.parseStatus(rpc("display.start"))
-                            observe()
-                        }
-                    }, enabled = !busy) {
-                        Text("Start screen")
-                    }
-                }
-                if (current?.running == true) {
-                    OutlinedButton(
-                        onClick = { act { observe() } },
-                        enabled = !busy,
-                        modifier = Modifier.testTag("bot_screen_reconnect"),
-                    ) {
-                        Text(if (socketUrl == null) "Watch" else "Reconnect")
-                    }
-                    if (!ownsControl) {
-                        Button(
-                            onClick = {
-                                act {
-                                    if (socketUrl == null) observe()
-                                    val id = viewerId ?: kotlin.error("No viewer ID")
-                                    val lease =
-                                        BotScreenProtocol.parseLease(
-                                            rpc(
-                                                "display.lease.acquire",
-                                                mapOf("viewer_id" to id),
-                                            ).toJsonObject()["lease"],
-                                        )
-                                    ownsControl = lease.heldBy(id)
-                                    setControl(ownsControl)
-                                    refreshStatus()
-                                }
-                            },
-                            enabled = !busy,
-                            modifier = Modifier.testTag("bot_screen_take_over"),
-                        ) { Text("Take over") }
-                    }
+            },
+            onToggleControl = {
+                act {
+                    val id = viewerId ?: kotlin.error("No viewer ID")
                     if (ownsControl) {
-                        Button(
-                            onClick = {
-                                act {
-                                    val id = viewerId ?: kotlin.error("No viewer ID")
-                                    val response = rpc("display.lease.release", mapOf("viewer_id" to id)).toJsonObject()
-                                    val lease = BotScreenProtocol.parseLease(response["lease"])
-                                    ownsControl = lease.heldBy(id)
-                                    setControl(false)
-                                    refreshStatus()
-                                }
-                            },
-                            enabled = !busy,
-                            modifier = Modifier.testTag("bot_screen_hand_back"),
-                        ) { Text("Hand back") }
+                        val response = rpc("display.lease.release", mapOf("viewer_id" to id)).toJsonObject()
+                        val lease = BotScreenProtocol.parseLease(response["lease"])
+                        ownsControl = lease.heldBy(id)
+                        setControl(false)
+                    } else {
+                        val lease =
+                            BotScreenProtocol.parseLease(
+                                rpc("display.lease.acquire", mapOf("viewer_id" to id)).toJsonObject()["lease"],
+                            )
+                        ownsControl = lease.heldBy(id)
+                        setControl(ownsControl)
                     }
+                    refreshStatus()
                 }
-            }
+            },
+        )
+    Column(modifier = modifier.fillMaxWidth()) {
+        header(profile, controls)
+        Box(modifier = Modifier.fillMaxWidth().weight(1f).background(MaterialTheme.colorScheme.surface)) {
             if (current?.running == true) {
                 AndroidView(
                     factory = {
@@ -368,8 +325,18 @@ fun BotScreenView(
                             loadUrl(displayPageUrl)
                         }
                     },
-                    modifier = Modifier.weight(1f).fillMaxWidth().testTag("bot_screen_viewer"),
+                    modifier = Modifier.fillMaxSize().testTag("bot_screen_viewer"),
                 )
+            } else {
+                if (current == null) {
+                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center).testTag("bot_screen_loading"))
+                } else {
+                    Text(
+                        controls.unavailable ?: "Screen not running",
+                        modifier = Modifier.align(Alignment.Center).padding(12.dp),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
             }
         }
     }
