@@ -317,7 +317,7 @@ class AppUpdateCheckerTest {
     }
 
     @Test
-    fun selectLatestUpdate_rejectsMalformedAndUnsupportedApkUrlsButAllowsHttp() {
+    fun selectLatestUpdate_rejectsMalformedAndNonHttpsApkUrls() {
         val releases =
             listOf(
                 release("v1.32.0", apkUrl = "https://bad host/release.apk"),
@@ -325,7 +325,7 @@ class AppUpdateCheckerTest {
                 release("v1.30.0", apkUrl = "http://localhost/release.apk"),
             )
 
-        assertEquals("v1.30.0", selectLatestUpdate(releases)?.tagName)
+        assertNull(selectLatestUpdate(releases))
     }
 
     @Test

@@ -92,7 +92,7 @@ fun selectLatestUpdate(
 
 private fun hasUsableApk(release: UpdateInfo): Boolean =
     !release.draft && release.apkAsset?.browserDownloadUrl?.toHttpUrlOrNull()?.let {
-        it.scheme == "http" || it.scheme == "https"
+        it.scheme == "https"
     } == true
 
 private fun isEligibleRelease(
@@ -251,7 +251,7 @@ open class AppUpdateChecker(
             val request =
                 try {
                     val httpUrl =
-                        url.toHttpUrlOrNull()?.takeIf { it.scheme == "http" || it.scheme == "https" }
+                        url.toHttpUrlOrNull()?.takeIf { it.scheme == "https" }
                             ?: run {
                                 failDownload(continuation, dest)
                                 return@suspendCancellableCoroutine
@@ -263,7 +263,18 @@ open class AppUpdateChecker(
                 }
             val call =
                 try {
-                    client.newCall(request)
+                    // GitHub release assets redirect between HTTPS hosts.
+                    // Validate every network exchange (including redirects) so that
+                    // an insecure downgrade is rejected before an HTTP request is sent.
+                    client
+                        .newBuilder()
+                        .addNetworkInterceptor { chain ->
+                            if (chain.request().url.scheme != "https") {
+                                throw IOException("Refusing insecure APK download redirect")
+                            }
+                            chain.proceed(chain.request())
+                        }.build()
+                        .newCall(request)
                 } catch (_: Exception) {
                     failDownload(continuation, dest)
                     return@suspendCancellableCoroutine
@@ -288,7 +299,7 @@ open class AppUpdateChecker(
                         var succeeded = false
                         try {
                             response.use {
-                                if (response.isSuccessful) {
+                                if (response.isSuccessful && response.request.url.scheme == "https") {
                                     val body = response.body
                                     val total = body.contentLength()
                                     dest.outputStream().use { out ->
