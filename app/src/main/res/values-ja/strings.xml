@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Hermesの通知 -->
+    <string name="kanban_notification_title">Hermesのタスク</string>
+    <string name="kanban_notification_completed">完了</string>
+    <string name="kanban_notification_attention">確認が必要</string>
+    <string name="kanban_notification_generic">タスク %1$s：%2$s</string>
+    <string name="kanban_mail_proposal_title">Hermesからの提案</string>
+    <string name="kanban_mail_proposal_text">広告メールの自動振り分け・配信停止について確認してください（%1$s）。</string>
+    <string name="kanban_mail_role_daily">普段使い</string>
+    <string name="kanban_mail_role_personal">個人活動</string>
+</resources>

@@ -142,11 +142,12 @@ internal class KanbanBackgroundAlertMonitor(
                         Log.d(TAG, "Startup owner-mail attention tasks: " + pending.size)
                     }
                     pending.forEach { task ->
-                        val key = "owner_mail_attention_v2|" + endpoint + "|" + PERSONAL_AGENT_BOARD + "|" + task.id
+                        val key = "owner_mail_attention_v3|" + endpoint + "|" + PERSONAL_AGENT_BOARD + "|" + task.id
                         if (!prefs.getBoolean(key, false)) {
                             // Android may shed queued notifications during a burst.
                             // Persist delivery only after it appears in activeNotifications.
-                            if (notifyTask(PERSONAL_AGENT_BOARD, task.id, "Gmail proposal needs your decision")) {
+                            val accountRole = if (task.title.endsWith("(daily)")) "daily" else "personal"
+                            if (notifyTask(PERSONAL_AGENT_BOARD, task.id, "owner_mail_proposal", accountRole)) {
                                 delay(800)
                                 val delivered =
                                     try {
@@ -218,6 +219,7 @@ internal class KanbanBackgroundAlertMonitor(
         board: String,
         taskId: String,
         kind: String,
+        accountRole: String? = null,
     ): Boolean {
         if (Build.VERSION.SDK_INT >= 33 &&
             ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
@@ -247,12 +249,40 @@ internal class KanbanBackgroundAlertMonitor(
                 intent,
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
             )
-        val text = "$taskId · $kind · $board"
+        val isMailProposal = kind == "owner_mail_proposal"
+        val notificationTitle =
+            if (isMailProposal) {
+                context.getString(R.string.kanban_mail_proposal_title)
+            } else {
+                context.getString(R.string.kanban_notification_title)
+            }
+        val text =
+            if (isMailProposal) {
+                val roleLabel =
+                    context.getString(
+                        if (accountRole == "daily") {
+                            R.string.kanban_mail_role_daily
+                        } else {
+                            R.string.kanban_mail_role_personal
+                        },
+                    )
+                context.getString(R.string.kanban_mail_proposal_text, roleLabel)
+            } else {
+                val status =
+                    context.getString(
+                        if (kind == "completed") {
+                            R.string.kanban_notification_completed
+                        } else {
+                            R.string.kanban_notification_attention
+                        },
+                    )
+                context.getString(R.string.kanban_notification_generic, taskId, status)
+            }
         val notification =
             NotificationCompat
                 .Builder(context, ChatNotificationService.CHAT_CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_notification)
-                .setContentTitle("Hermes Kanban")
+                .setContentTitle(notificationTitle)
                 .setContentText(text)
                 .setStyle(NotificationCompat.BigTextStyle().bigText(text))
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
