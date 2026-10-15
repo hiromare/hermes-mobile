@@ -25,6 +25,8 @@ class KanbanBackgroundAlertMonitorTest {
             KanbanColumn(name = "blocked", tasks = listOf(
                 item, item.copy(), item.copy(id = "t_mail0002", status = "ready"),
                 item.copy(id = "t_mail0003", title = "Other task"),
+                item.copy(id = "t_mail0005", title = "Gmail 広告の扱いを確認 (untrusted)"),
+                item.copy(id = "invalid-task-id"),
             )),
             KanbanColumn(name = "done", tasks = listOf(item.copy(id = "t_mail0004"))),
         ))

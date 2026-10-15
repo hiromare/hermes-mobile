@@ -40,7 +40,8 @@ internal fun pendingMailAttentionTasks(board: KanbanBoardResponse): List<KanbanT
         .flatMap { it.tasks }
         .filter {
             it.status.equals("blocked", ignoreCase = true) &&
-                it.title.startsWith("Gmail 広告の扱いを確認 (") &&
+                (it.title == "Gmail 広告の扱いを確認 (daily)" ||
+                    it.title == "Gmail 広告の扱いを確認 (personal)") &&
                 it.id.matches(Regex("t_[a-zA-Z0-9_-]{4,64}"))
         }
         .distinctBy { it.id }
