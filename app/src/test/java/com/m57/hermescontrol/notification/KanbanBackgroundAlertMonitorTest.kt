@@ -20,49 +20,81 @@ import org.junit.Test
 class KanbanBackgroundAlertMonitorTest {
     @Test
     fun testOnlyBlockedMailTasksQualify() {
-        val item = KanbanTask(id = "t_mail0001", title = "Gmail 広告の扱いを確認 (personal)", status = "blocked", createdAt = 10L)
-        val board = KanbanBoardResponse(columns = listOf(
-            KanbanColumn(name = "blocked", tasks = listOf(
-                item, item.copy(), item.copy(id = "t_mail0002", status = "ready"),
-                item.copy(id = "t_mail0003", title = "Other task"),
-                item.copy(id = "t_mail0005", title = "Gmail 広告の扱いを確認 (untrusted)"),
-                item.copy(id = "invalid-task-id"),
-            )),
-            KanbanColumn(name = "done", tasks = listOf(item.copy(id = "t_mail0004"))),
-        ))
+        val item =
+            KanbanTask(id = "t_mail0001", title = "Gmail 広告の扱いを確認 (personal)", status = "blocked", createdAt = 10L)
+        val board =
+            KanbanBoardResponse(
+                columns =
+                    listOf(
+                        KanbanColumn(
+                            name = "blocked",
+                            tasks =
+                                listOf(
+                                    item,
+                                    item.copy(),
+                                    item.copy(id = "t_mail0002", status = "ready"),
+                                    item.copy(id = "t_mail0003", title = "Other task"),
+                                    item.copy(id = "t_mail0005", title = "Gmail 広告の扱いを確認 (untrusted)"),
+                                    item.copy(id = "invalid-task-id"),
+                                ),
+                        ),
+                        KanbanColumn(name = "done", tasks = listOf(item.copy(id = "t_mail0004"))),
+                    ),
+            )
         assertEquals(listOf("t_mail0001"), pendingMailAttentionTasks(board).map { it.id })
     }
 
     @Test
     fun testOwnerAttentionCappedOldestFirst() {
-        val tasks = (1..6).reversed().map { n ->
-            KanbanTask(id = "t_mail000$n", title = "Gmail 広告の扱いを確認 (personal)",
-                status = "blocked", createdAt = n.toLong())
-        }
+        val tasks =
+            (1..6).reversed().map { n ->
+                KanbanTask(
+                    id = "t_mail000$n",
+                    title = "Gmail 広告の扱いを確認 (personal)",
+                    status = "blocked",
+                    createdAt = n.toLong(),
+                )
+            }
         val board = KanbanBoardResponse(columns = listOf(KanbanColumn(name = "blocked", tasks = tasks)))
         assertEquals(listOf("t_mail0001", "t_mail0002", "t_mail0003"), pendingMailAttentionTasks(board).map { it.id })
     }
 
     @Test
-    fun testOwnerAttentionScopedToExistingAuthenticatedBoard() = runTest {
-        val repo = mockk<KanbanRepository>()
-        coEvery { repo.getBoard(board = "dots-personal-agent") } returns NetworkResult.Success(
-            KanbanBoardResponse(columns = listOf(KanbanColumn(name = "blocked", tasks = listOf(
-                KanbanTask(id = "t_mail0001", title = "Gmail 広告の扱いを確認 (daily)", status = "blocked"),
-            )))),
-        )
-        assertEquals(emptyList<KanbanTask>(), loadPendingMailAttention(repo, "other-board"))
-        assertEquals(1, loadPendingMailAttention(repo, "dots-personal-agent").size)
-        coVerify(exactly = 1) { repo.getBoard(board = "dots-personal-agent") }
-    }
+    fun testOwnerAttentionScopedToExistingAuthenticatedBoard() =
+        runTest {
+            val repo = mockk<KanbanRepository>()
+            coEvery { repo.getBoard(board = "dots-personal-agent") } returns
+                NetworkResult.Success(
+                    KanbanBoardResponse(
+                        columns =
+                            listOf(
+                                KanbanColumn(
+                                    name = "blocked",
+                                    tasks =
+                                        listOf(
+                                            KanbanTask(
+                                                id = "t_mail0001",
+                                                title = "Gmail 広告の扱いを確認 (daily)",
+                                                status = "blocked",
+                                            ),
+                                        ),
+                                ),
+                            ),
+                    ),
+                )
+            assertEquals(emptyList<KanbanTask>(), loadPendingMailAttention(repo, "other-board"))
+            assertEquals(1, loadPendingMailAttention(repo, "dots-personal-agent").size)
+            coVerify(exactly = 1) { repo.getBoard(board = "dots-personal-agent") }
+        }
 
     @Test
-    fun testNoSyntheticAttentionOnApiError() = runTest {
-        val repo = mockk<KanbanRepository>()
-        coEvery { repo.getBoard(board = "dots-personal-agent") } returns
-            NetworkResult.Failure(NetworkError.Http(503, "down"))
-        assertEquals(emptyList<KanbanTask>(), loadPendingMailAttention(repo, "dots-personal-agent"))
-    }
+    fun testNoSyntheticAttentionOnApiError() =
+        runTest {
+            val repo = mockk<KanbanRepository>()
+            coEvery { repo.getBoard(board = "dots-personal-agent") } returns
+                NetworkResult.Failure(NetworkError.Http(503, "down"))
+            assertEquals(emptyList<KanbanTask>(), loadPendingMailAttention(repo, "dots-personal-agent"))
+        }
 
     @Test
     fun `notification tags are scoped to board and task`() {

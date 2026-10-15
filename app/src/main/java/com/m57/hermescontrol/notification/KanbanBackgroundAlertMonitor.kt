@@ -40,11 +40,12 @@ internal fun pendingMailAttentionTasks(board: KanbanBoardResponse): List<KanbanT
         .flatMap { it.tasks }
         .filter {
             it.status.equals("blocked", ignoreCase = true) &&
-                (it.title == "Gmail 広告の扱いを確認 (daily)" ||
-                    it.title == "Gmail 広告の扱いを確認 (personal)") &&
+                (
+                    it.title == "Gmail 広告の扱いを確認 (daily)" ||
+                        it.title == "Gmail 広告の扱いを確認 (personal)"
+                ) &&
                 it.id.matches(Regex("t_[a-zA-Z0-9_-]{4,64}"))
-        }
-        .distinctBy { it.id }
+        }.distinctBy { it.id }
         .sortedWith(compareBy<KanbanTask> { it.createdAt ?: Long.MAX_VALUE }.thenBy { it.id })
         .take(MAX_PENDING_MAIL_ATTENTION)
 
@@ -150,7 +151,9 @@ internal class KanbanBackgroundAlertMonitor(
                                 val delivered =
                                     try {
                                         val manager =
-                                            context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+                                            context.getSystemService(
+                                                Context.NOTIFICATION_SERVICE,
+                                            ) as NotificationManager
                                         manager.activeNotifications.any {
                                             it.tag == kanbanNotificationTag(PERSONAL_AGENT_BOARD, task.id) && it.id == 0
                                         }
