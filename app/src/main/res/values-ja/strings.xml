@@ -9,4 +9,27 @@
     <string name="kanban_mail_proposal_text">広告メールの自動振り分け・配信停止について確認してください（%1$s）。</string>
     <string name="kanban_mail_role_daily">普段使い</string>
     <string name="kanban_mail_role_personal">個人活動</string>
+    <!-- タスク詳細 -->
+    <string name="kanban_description">説明</string>
+    <string name="kanban_edit_description">説明を編集</string>
+    <string name="kanban_task_details">タスク詳細</string>
+    <string name="kanban_tab_overview">概要</string>
+    <string name="kanban_tab_discussion">やり取り</string>
+    <string name="kanban_tab_runs">実行履歴</string>
+    <string name="kanban_tab_activity">更新履歴</string>
+    <string name="kanban_tab_files">ファイル</string>
+    <string name="kanban_attributes_label">属性</string>
+    <string name="kanban_status_label">状態</string>
+    <string name="kanban_blocked_label">判断待ち</string>
+    <string name="kanban_assignee">担当</string>
+    <string name="kanban_assignee_unassigned">未割り当て</string>
+    <string name="kanban_priority">優先度</string>
+    <string name="kanban_tenant_label">テナント</string>
+    <string name="kanban_workspace_label">作業領域</string>
+    <string name="kanban_worker_pid_label">実行プロセス</string>
+    <string name="kanban_workflow_label">ワークフロー</string>
+    <string name="kanban_step_label">ステップ</string>
+    <string name="kanban_no_description">説明はありません。</string>
+    <string name="action_save">保存</string>
+    <string name="action_cancel">キャンセル</string>
 </resources>
