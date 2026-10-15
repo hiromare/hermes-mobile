@@ -1912,4 +1912,23 @@
     <string name="trust_user_cas_description">Trust system CAs and any CA installed in Android’s user certificate store for all connections. Any user-installed CA can authenticate servers for this app. Certificate and hostname checks remain enabled. Off by default.</string>
     <string name="trust_user_cas_save_failed">Could not save the trust setting. Please try again.</string>
     <string name="trust_user_cas_restart_required">Restart the app process to apply this change.</string>
+    <!-- Hermes Kanban notifications -->
+    <string name="kanban_notification_title">Hermes tasks</string>
+    <string name="kanban_notification_completed">Completed</string>
+    <string name="kanban_notification_attention">Needs attention</string>
+    <string name="kanban_notification_generic">Task %1$s: %2$s</string>
+    <string name="kanban_mail_proposal_title">Suggestion from Hermes</string>
+    <string name="kanban_mail_proposal_text">Review how to handle promotional emails (%1$s): sorting and unsubscribing are separate choices.</string>
+    <string name="kanban_mail_role_daily">daily account</string>
+    <string name="kanban_mail_role_personal">personal account</string>
+    <!-- Task detail labels -->
+    <string name="kanban_attributes_label">Attributes</string>
+    <string name="kanban_status_label">Status</string>
+    <string name="kanban_blocked_label">Blocked</string>
+    <string name="kanban_tenant_label">Tenant</string>
+    <string name="kanban_workspace_label">Workspace</string>
+    <string name="kanban_worker_pid_label">Worker PID</string>
+    <string name="kanban_workflow_label">Workflow</string>
+    <string name="kanban_step_label">Step</string>
+    <string name="kanban_no_description">No description provided.</string>
 </resources>

@@ -460,13 +460,21 @@ private fun TaskOverviewTab(
             ) {
                 Column(modifier = Modifier.padding(12.dp)) {
                     Text(
-                        text = "Attributes",
+                        text = stringResource(R.string.kanban_attributes_label),
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary,
                     )
                     Spacer(modifier = Modifier.height(8.dp))
-                    MetaRow(label = "Status", value = task.status.uppercase())
+                    MetaRow(
+                        label = stringResource(R.string.kanban_status_label),
+                        value =
+                            if (task.status.equals("blocked", ignoreCase = true)) {
+                                stringResource(R.string.kanban_blocked_label)
+                            } else {
+                                task.status.uppercase()
+                            },
+                    )
 
                     // Editable Assignee
                     Row(
@@ -515,12 +523,32 @@ private fun TaskOverviewTab(
                         }
                     }
 
-                    task.priority?.let { MetaRow(label = "Priority", value = it.toString()) }
-                    task.tenant?.let { MetaRow(label = "Tenant", value = it) }
-                    task.workspaceKind?.let { MetaRow(label = "Workspace", value = "$it ${task.workspacePath ?: ""}") }
-                    task.workerPid?.let { MetaRow(label = "Worker PID", value = it.toString()) }
-                    task.workflowTemplateId?.let { MetaRow(label = "Workflow", value = it) }
-                    task.currentStepKey?.let { MetaRow(label = "Step", value = it) }
+                    task.priority?.let {
+                        MetaRow(
+                            label = stringResource(R.string.kanban_priority),
+                            value = it.toString(),
+                        )
+                    }
+                    task.tenant?.let { MetaRow(label = stringResource(R.string.kanban_tenant_label), value = it) }
+                    task.workspaceKind?.let {
+                        MetaRow(
+                            label = stringResource(R.string.kanban_workspace_label),
+                            value = "$it ${task.workspacePath ?: ""}",
+                        )
+                    }
+                    task.workerPid?.let {
+                        MetaRow(
+                            label = stringResource(R.string.kanban_worker_pid_label),
+                            value = it.toString(),
+                        )
+                    }
+                    task.workflowTemplateId?.let {
+                        MetaRow(
+                            label = stringResource(R.string.kanban_workflow_label),
+                            value = it,
+                        )
+                    }
+                    task.currentStepKey?.let { MetaRow(label = stringResource(R.string.kanban_step_label), value = it) }
 
                     Spacer(modifier = Modifier.height(8.dp))
                     HorizontalDivider()
@@ -742,7 +770,7 @@ private fun TaskOverviewTab(
                     } else {
                         SelectionContainer {
                             MarkdownText(
-                                text = task.body?.ifBlank { "No description provided." } ?: "No description provided.",
+                                text = task.body?.ifBlank { null } ?: stringResource(R.string.kanban_no_description),
                                 textColor = MaterialTheme.colorScheme.onSurface,
                             )
                         }
