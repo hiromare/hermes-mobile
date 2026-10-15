@@ -13,7 +13,9 @@ import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.m57.hermescontrol.R
 import com.m57.hermescontrol.data.local.AuthManager
+import com.m57.hermescontrol.data.model.KanbanBoardResponse
 import com.m57.hermescontrol.data.model.KanbanBoardsResponse
+import com.m57.hermescontrol.data.model.KanbanTask
 import com.m57.hermescontrol.data.remote.NetworkResult
 import com.m57.hermescontrol.data.remote.OkHttpProvider
 import com.m57.hermescontrol.data.repository.KanbanRepository
@@ -27,6 +29,35 @@ import kotlinx.serialization.decodeFromString
 
 private val BOARD_SLUG_PATTERN = Regex("[a-zA-Z0-9][a-zA-Z0-9_-]{0,79}")
 private const val MAX_MONITORED_BOARDS = 12
+private const val PERSONAL_AGENT_BOARD = "dots-personal-agent"
+private const val MAX_PENDING_MAIL_ATTENTION = 3
+
+// Historical events are silent; remind only currently blocked owner mail decisions.
+internal fun pendingMailAttentionTasks(board: KanbanBoardResponse): List<KanbanTask> =
+    board.columns
+        .filter { it.name.equals("blocked", ignoreCase = true) }
+        .flatMap { it.tasks }
+        .filter {
+            it.status.equals("blocked", ignoreCase = true) &&
+                it.title.startsWith("Gmail 広告の扱いを確認 (") &&
+                it.id.matches(Regex("t_[a-zA-Z0-9_-]{4,64}"))
+        }
+        .distinctBy { it.id }
+        .sortedWith(compareBy<KanbanTask> { it.createdAt ?: Long.MAX_VALUE }.thenBy { it.id })
+        .take(MAX_PENDING_MAIL_ATTENTION)
+
+internal suspend fun loadPendingMailAttention(
+    repository: KanbanRepository,
+    board: String,
+): List<KanbanTask> =
+    if (board != PERSONAL_AGENT_BOARD) {
+        emptyList()
+    } else {
+        when (val response = repository.getBoard(board = board)) {
+            is NetworkResult.Success -> pendingMailAttentionTasks(response.data)
+            is NetworkResult.Failure -> emptyList()
+        }
+    }
 
 /** Collision-free task identity across boards. */
 internal fun kanbanNotificationTag(
@@ -92,6 +123,30 @@ internal class KanbanBackgroundAlertMonitor(
                     Log.w(TAG, "Kanban notification board subscription limit reached")
                 }
                 val endpoint = AuthManager.endpointForBuild().baseUrl.toString()
+                // Reuse the existing opted-in foreground monitor; no new
+                // owner authorization path or unattended background daemon.
+                if (scope.isActive && PERSONAL_AGENT_BOARD in boards) {
+                    val pending =
+                        try {
+                            loadPendingMailAttention(repository, PERSONAL_AGENT_BOARD)
+                        } catch (e: Exception) {
+                            // A backlog lookup must never prevent the ordinary
+                            // authenticated Kanban event streams from starting.
+                            Log.w(TAG, "Owner-mail attention read unavailable: " + e.javaClass.simpleName)
+                            emptyList()
+                        }
+                    if (com.m57.hermescontrol.BuildConfig.DEBUG) {
+                        Log.d(TAG, "Startup owner-mail attention tasks: " + pending.size)
+                    }
+                    pending.forEach { task ->
+                        val key = "owner_mail_attention|" + endpoint + "|" + PERSONAL_AGENT_BOARD + "|" + task.id
+                        if (!prefs.getBoolean(key, false) &&
+                            notifyTask(PERSONAL_AGENT_BOARD, task.id, "Gmail proposal needs your decision")
+                        ) {
+                            prefs.edit().putBoolean(key, true).apply()
+                        }
+                    }
+                }
                 boards.forEach { board ->
                     if (!scope.isActive) return@launch
                     val key = "events_" + (endpoint + "|" + board).hashCode().toString()
@@ -140,12 +195,12 @@ internal class KanbanBackgroundAlertMonitor(
         board: String,
         taskId: String,
         kind: String,
-    ) {
+    ): Boolean {
         if (Build.VERSION.SDK_INT >= 33 &&
             ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
             PackageManager.PERMISSION_GRANTED
         ) {
-            return
+            return false
         }
         val intent =
             Intent(context, KanbanNotificationTapActivity::class.java).apply {
@@ -184,6 +239,7 @@ internal class KanbanBackgroundAlertMonitor(
                 .build()
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         manager.notify(kanbanNotificationTag(board, taskId), 0, notification)
+        return true
     }
 
     private companion object {
