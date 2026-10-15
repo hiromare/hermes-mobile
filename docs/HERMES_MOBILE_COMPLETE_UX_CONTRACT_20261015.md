@@ -179,3 +179,7 @@ UIナビゲーションの下部/上部という議論を**ここで凍結しな
 | **合計** | **122** | **単体テスト。機能E2Eは未実証** |
 
 再現コマンド：Android Studio付属JBRを JAVA_HOME に設定し、offline Gradle で :app:testDebugUnitTest と各クラス名を --tests で指定。ログはMacローカルの /tmp/hermes-ux-audit-tests.log および /tmp/hermes-ux-contract-targeted-tests.log、XMLは app/build/test-results/testDebugUnitTest に生成。実証の範囲はユニットテストとエミュレータの表示・遷移確認まで。
+
+## 11. 完成形の操作フロー設計（2026-10-15追補）
+
+設計の具体化として **[Hermes Mobile完成形の操作設計](HERMES_MOBILE_END_STATE_UX_BLUEPRINT_20261015.md)** を追加した。チャット→専門Bot招集→Group Chat→既存Kanban Task/Worker→承認/介入→復帰まで、入力・中断・失敗・証拠のある成果を含めた体験として評価する。UIのレイアウト/タブ位置は未確定。**既存ChatInputBar、Group Chat、フルKanban、履歴/設定の能力を削る案は不採用**とし、画面リンクのみでの機能維持も認めない。E2E合格はまだ宣言しない。
