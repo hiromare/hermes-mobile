@@ -23,6 +23,7 @@ import com.m57.hermescontrol.data.repository.KanbanRepositoryImpl
 import com.m57.hermescontrol.data.ws.KanbanEventsClient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.serialization.decodeFromString
@@ -139,11 +140,29 @@ internal class KanbanBackgroundAlertMonitor(
                         Log.d(TAG, "Startup owner-mail attention tasks: " + pending.size)
                     }
                     pending.forEach { task ->
-                        val key = "owner_mail_attention|" + endpoint + "|" + PERSONAL_AGENT_BOARD + "|" + task.id
-                        if (!prefs.getBoolean(key, false) &&
-                            notifyTask(PERSONAL_AGENT_BOARD, task.id, "Gmail proposal needs your decision")
-                        ) {
-                            prefs.edit().putBoolean(key, true).apply()
+                        val key = "owner_mail_attention_v2|" + endpoint + "|" + PERSONAL_AGENT_BOARD + "|" + task.id
+                        if (!prefs.getBoolean(key, false)) {
+                            // Android may shed queued notifications during a burst.
+                            // Persist delivery only after it appears in activeNotifications.
+                            if (notifyTask(PERSONAL_AGENT_BOARD, task.id, "Gmail proposal needs your decision")) {
+                                delay(800)
+                                val delivered =
+                                    try {
+                                        val manager =
+                                            context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+                                        manager.activeNotifications.any {
+                                            it.tag == kanbanNotificationTag(PERSONAL_AGENT_BOARD, task.id) && it.id == 0
+                                        }
+                                    } catch (e: RuntimeException) {
+                                        Log.w(TAG, "Owner-mail notification check failed: " + e.javaClass.simpleName)
+                                        false
+                                    }
+                                if (delivered) {
+                                    prefs.edit().putBoolean(key, true).apply()
+                                } else {
+                                    Log.w(TAG, "Owner-mail attention notification not visible to Android")
+                                }
+                            }
                         }
                     }
                 }
