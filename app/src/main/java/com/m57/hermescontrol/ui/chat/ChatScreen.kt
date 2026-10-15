@@ -15,6 +15,7 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -35,6 +36,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
@@ -68,6 +70,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
@@ -79,9 +82,12 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.m57.hermescontrol.BotsScreen
 import com.m57.hermescontrol.BuildConfig
 import com.m57.hermescontrol.ExternalActivityLifecycleGuard
+import com.m57.hermescontrol.GroupChatKey
 import com.m57.hermescontrol.HistoryScreen
+import com.m57.hermescontrol.KanbanScreen
 import com.m57.hermescontrol.LogsScreen
 import com.m57.hermescontrol.NavigationController
 import com.m57.hermescontrol.R
@@ -107,6 +113,7 @@ import com.m57.hermescontrol.ui.chat.components.ChatTimelineSheet
 import com.m57.hermescontrol.ui.chat.components.ConnectionSetupSheet
 import com.m57.hermescontrol.ui.chat.components.ContextDetailSheet
 import com.m57.hermescontrol.ui.chat.components.ContextUsageChip
+import com.m57.hermescontrol.ui.chat.components.ConversationWorkspaceSheet
 import com.m57.hermescontrol.ui.chat.components.MediaViewerDialog
 import com.m57.hermescontrol.ui.chat.components.PendingSendRecovery
 import com.m57.hermescontrol.ui.chat.components.ProjectBadge
@@ -129,6 +136,7 @@ import com.m57.hermescontrol.ui.chat.components.replaceComposerDraft
 import com.m57.hermescontrol.ui.chat.components.restoreRejectedComposerDraft
 import com.m57.hermescontrol.ui.chat.components.shouldShowProgressChip
 import com.m57.hermescontrol.ui.chat.components.tailContentKey
+import com.m57.hermescontrol.ui.chat.components.workspaceHasUnsavedDraft
 import com.m57.hermescontrol.ui.chat.fullbleed.FullBleedChatList
 import com.m57.hermescontrol.ui.chat.fullbleed.TranscriptActions
 import com.m57.hermescontrol.ui.common.ActionProgressDialog
@@ -193,6 +201,11 @@ fun ChatScreen(
     val displayedMessages = transcriptState.messages
     val lifecycleOwner = LocalLifecycleOwner.current
     val context = LocalContext.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+    // Debug-only incremental UX: overlays the original fully-functional chat.
+    // No toolbar/composer replacement, and no new task/session source of truth.
+    val workspacePreviewEnabled = BuildConfig.DEBUG && BuildConfig.APPLICATION_ID.endsWith(".dev")
+    var showWorkspaceSheet by remember { mutableStateOf(false) }
 
     DisposableEffect(lifecycleOwner) {
         val observer =
@@ -491,7 +504,20 @@ fun ChatScreen(
         modifier = modifier,
         pinTopBar = true,
         title = {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier =
+                    if (workspacePreviewEnabled) {
+                        Modifier
+                            .clickable {
+                                // Keep the draft intact, but give the sheet its full viewport.
+                                keyboardController?.hide()
+                                showWorkspaceSheet = true
+                            }.testTag("chat_workspace_title")
+                    } else {
+                        Modifier
+                    },
+            ) {
                 AutoScrollingTitleText(
                     text = state.chatTitle,
                     modifier = Modifier.weight(1f),
@@ -500,6 +526,13 @@ fun ChatScreen(
                             fontWeight = FontWeight.Bold,
                         ),
                 )
+                if (workspacePreviewEnabled) {
+                    Icon(
+                        imageVector = Icons.Filled.KeyboardArrowDown,
+                        contentDescription = "会話・仕事・Groupを選ぶ",
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
                 // Connection status dot — red when offline, hidden when connected
                 if (!state.isConnected) {
                     Spacer(modifier = Modifier.width(8.dp))
@@ -1107,6 +1140,26 @@ fun ChatScreen(
                     }
                 },
                 onDismiss = viewModel::continueConnectionOperation,
+            )
+        }
+
+        if (workspacePreviewEnabled && showWorkspaceSheet) {
+            ConversationWorkspaceSheet(
+                activeTitle = state.chatTitle,
+                activeSessionId = state.currentSessionId,
+                sessions = state.sessions,
+                hasComposerDraft =
+                    workspaceHasUnsavedDraft(
+                        composerText = inputState.text,
+                        pendingAttachmentCount = state.pendingAttachments.size,
+                        isSending = state.isSending,
+                    ),
+                onDismiss = { showWorkspaceSheet = false },
+                onSwitchSession = viewModel::switchSession,
+                onOpenHistory = { NavigationController.navigateTo(HistoryScreen) },
+                onOpenGroup = { NavigationController.navigateTo(GroupChatKey(it)) },
+                onOpenBots = { NavigationController.navigateTo(BotsScreen) },
+                onOpenKanban = { NavigationController.navigateTo(KanbanScreen) },
             )
         }
 
